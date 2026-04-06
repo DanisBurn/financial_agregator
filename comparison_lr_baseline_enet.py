@@ -68,6 +68,7 @@ for name, pred in [
 
 results_df = pd.DataFrame(results, columns=["Model", "MAE", "RMSE", "MAPE (%)"])
 print(results_df.sort_values("MAE"))
+
 # Результат
                        # Model        MAE       RMSE  MAPE (%)
 # 1           Linear Regression  31.348241  39.749293  0.252336
