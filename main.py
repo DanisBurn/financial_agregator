@@ -4,10 +4,17 @@ from tengebank import TengeBank
 from kapitalbank import KapitalBank
 from orientfinansbank import OrientFinansBank
 from cbu import Cbu
+from hayotbank import HayotBank
+from apexbank import ApexBank
+from octobank import Octobank
+from davrbank import DavrBank
+from anorbank import Anorbank
+from poytaxtbank import PoytaxtBank
+from tbcbank import TBCBank
+
 
 def main():
-    #banks = [TengeBank(), KapitalBank()]
-    banks = [OrientFinansBank()]
+    banks = [TengeBank(), KapitalBank(), OrientFinansBank(), HayotBank(), ApexBank(), Octobank(), DavrBank(), Anorbank(), PoytaxtBank(), TBCBank()]
 
     final_report = {
         "timestamp": datetime.now().isoformat(),

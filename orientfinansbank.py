@@ -42,16 +42,13 @@ class OrientFinansBank(BaseBankScraper):
             
             for code in target_codes:
                 if code in currency_text:
-                    # Извлекаем сырой текст из ячеек
                     raw_buy = cells[1].get_text(strip=True)
                     raw_sell = cells[2].get_text(strip=True)
                     
                     try:
-                        # 1. Меняем запятые на точки
                         clean_buy = raw_buy.replace(',', '.')
                         clean_sell = raw_sell.replace(',', '.')
                         
-                        # 2. Вырезаем всё, кроме цифр (\d) и точки (.)
                         buy = re.sub(r'[^\d.]', '', clean_buy)
                         sell = re.sub(r'[^\d.]', '', clean_sell)
                         
