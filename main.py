@@ -1,11 +1,11 @@
 import json
 from datetime import datetime
-from TengeBank import TengeBank
-from KapitalBank import KapitalBank
+from tengebank import TengeBank
+from kapitalbank import KapitalBank
 from cbu import Cbu
 
 def main():
-    banks = [TengeBank(), KapitalBank(), Cbu()]
+    banks = [TengeBank(), KapitalBank()]
 
     final_report = {
         "timestamp": datetime.now().isoformat(),
