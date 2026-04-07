@@ -1,11 +1,6 @@
 import re
-
 from bs4 import BeautifulSoup
-
-try:
-    from .base_bank_scraper import BaseBankScraper
-except ImportError:
-    from base_bank_scraper import BaseBankScraper
+from BaseBank import BaseBankScraper
 
 
 class Cbu(BaseBankScraper):
@@ -52,9 +47,3 @@ class Cbu(BaseBankScraper):
             "url": self.api_url,
             "items": items,
         }
-
-
-if __name__ == "__main__":
-    scraper = Cbu()
-    raw_data = scraper.fetch_data()
-    print(scraper.parse(raw_data))

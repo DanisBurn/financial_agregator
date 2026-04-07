@@ -1,4 +1,5 @@
 from BaseBank import BaseBankScraper
+from bs4 import BeautifulSoup
 
 class KapitalBank(BaseBankScraper):
     def __init__(self):
