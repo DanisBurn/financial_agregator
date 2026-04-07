@@ -12,7 +12,7 @@ URL = "https://cbu.uz/ru/"
 
 
 class Cbu(BaseBankScraper):
-    def __init__(self):
+    def __init__(self)
       
 
 def clean_price(price_str: str) -> float:
