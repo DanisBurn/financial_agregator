@@ -1,32 +1,18 @@
 {
-    "timestamp": "2026-04-07T15:56:01.115104",
+    "timestamp": "2026-04-07T16:29:26.732502",
     "banks": {
-        "Tenge Bank": {
+        "Orient Finans Bank": {
             "USD": {
-                "buy": 12120,
-                "sell": 12230
+                "buy": 12085.0,
+                "sell": 12150.0
             },
             "EUR": {
-                "buy": 13400,
-                "sell": 14500
+                "buy": 13725.0,
+                "sell": 14430.0
             },
             "RUB": {
-                "buy": 120,
-                "sell": 157
-            }
-        },
-        "Kapital Bank": {
-            "USD": {
-                "buy": 12115.0,
-                "sell": 12215.0
-            },
-            "EUR": {
-                "buy": 13600.0,
-                "sell": 14190.0
-            },
-            "RUB": {
-                "buy": 144.0,
-                "sell": 156.0
+                "buy": 130.0,
+                "sell": 152.0
             }
         }
     }
