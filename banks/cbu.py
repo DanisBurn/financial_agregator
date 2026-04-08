@@ -1,6 +1,5 @@
 from BaseBank import BaseBankScraper
 
-
 class CBU(BaseBankScraper):
     def __init__(self):
         super().__init__()
