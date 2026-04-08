@@ -33,13 +33,9 @@ class OctoBank(BaseBankScraper):
         if not rates_div or not rates_div.has_attr('data-rates'):
             return None
 
-        # Берем их сломанную строку
         raw_string = rates_div['data-rates']
         
-        # Вытаскиваем нужные цифры с помощью гибкого паттерна
         for code in target_codes:
-            # Ищет конструкцию вроде "USD": {"buy": 12120, "sell": 12210} 
-            # Разрешает одинарные/двойные кавычки и лишние пробелы
             match = re.search(fr'["\']?{code}["\']?\s*:\s*\{{\s*["\']?buy["\']?\s*:\s*([\d.]+)\s*,\s*["\']?sell["\']?\s*:\s*([\d.]+)', raw_string)
             
             if match:
