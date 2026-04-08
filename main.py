@@ -1,20 +1,51 @@
 import json
 from datetime import datetime
-from tengebank import TengeBank
-from kapitalbank import KapitalBank
+from cbu import CBU
+from nbu import NBU
+from sqb import SQB
+from agrobank import Agrobank
+from xb import XB
+from garantbank import GarantBank
+from brb import BRB
+from turonbank import TuronBank
+from hamkorbank import HamkorBank
+from asakabank import AsakaBank
+from ipakyulibank import IpakYuliBank
+from KapitalBank import KapitalBank
 from orientfinansbank import OrientFinansBank
-from cbu import Cbu
+from TengeBank import TengeBank
 from hayotbank import HayotBank
 from apexbank import ApexBank
-from octobank import Octobank
+from octobank import OctoBank
 from davrbank import DavrBank
-from anorbank import Anorbank
+from anorbank import AnorBank
 from poytaxtbank import PoytaxtBank
 from tbcbank import TBCBank
 
-
 def main():
-    banks = [TengeBank(), KapitalBank(), OrientFinansBank(), HayotBank(), ApexBank(), Octobank(), DavrBank(), Anorbank(), PoytaxtBank(), TBCBank()]
+    banks = [
+        CBU(),
+        NBU(), 
+        SQB(), 
+        Agrobank(), 
+        XB(), 
+        GarantBank(), 
+        BRB(), 
+        TuronBank(), 
+        HamkorBank(), 
+        AsakaBank(), 
+        IpakYuliBank(), 
+        KapitalBank(),
+        OrientFinansBank(), 
+        TengeBank(),
+        HayotBank(),
+        ApexBank(),
+        OctoBank(),
+        DavrBank(),
+        AnorBank(),
+        PoytaxtBank(),
+        TBCBank(),
+        ]
 
     final_report = {
         "timestamp": datetime.now().isoformat(),
