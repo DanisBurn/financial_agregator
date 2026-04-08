@@ -1,7 +1,9 @@
-import json
+import re
 from bs4 import BeautifulSoup
 import urllib3
 from BaseBank import BaseBankScraper
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class OctoBank(BaseBankScraper):
     def __init__(self):
@@ -25,29 +27,28 @@ class OctoBank(BaseBankScraper):
         soup = BeautifulSoup(html, 'html.parser')
         results = {}
         target_codes = ['USD', 'EUR', 'RUB']
+
         rates_div = soup.find('div', id='currency-rates')
+        
         if not rates_div or not rates_div.has_attr('data-rates'):
-            print("[-] Octobank: Блок data-rates не найден на странице")
             return None
 
-        try:
-            raw_json_string = rates_div['data-rates']
-            rates_data = json.loads(raw_json_string)
+        # Берем их сломанную строку
+        raw_string = rates_div['data-rates']
+        
+        # Вытаскиваем нужные цифры с помощью гибкого паттерна
+        for code in target_codes:
+            # Ищет конструкцию вроде "USD": {"buy": 12120, "sell": 12210} 
+            # Разрешает одинарные/двойные кавычки и лишние пробелы
+            match = re.search(fr'["\']?{code}["\']?\s*:\s*\{{\s*["\']?buy["\']?\s*:\s*([\d.]+)\s*,\s*["\']?sell["\']?\s*:\s*([\d.]+)', raw_string)
             
-            for code in target_codes:
-                if code in rates_data:
-                    buy = rates_data[code].get('buy')
-                    sell = rates_data[code].get('sell')
+            if match:
+                try:
+                    results[code] = {
+                        "buy": float(match.group(1)),
+                        "sell": float(match.group(2))
+                    }
+                except ValueError:
+                    continue
                     
-                    if buy and sell:
-                        results[code] = {
-                            "buy": float(buy),
-                            "sell": float(sell)
-                        }
-                        
-        except json.JSONDecodeError as e:
-            print(f"[-] Octobank: Банк сломал структуру JSON внутри атрибута: {e}")
-        except (ValueError, TypeError) as e:
-            print(f"[-] Octobank: Ошибка конвертации чисел: {e}")
-            
         return results if results else None

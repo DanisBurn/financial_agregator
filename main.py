@@ -11,9 +11,9 @@ from turonbank import TuronBank
 from hamkorbank import HamkorBank
 from asakabank import AsakaBank
 from ipakyulibank import IpakYuliBank
-from KapitalBank import KapitalBank
+from kapitalbank import KapitalBank
 from orientfinansbank import OrientFinansBank
-from TengeBank import TengeBank
+from tengebank import TengeBank
 from hayotbank import HayotBank
 from apexbank import ApexBank
 from octobank import OctoBank

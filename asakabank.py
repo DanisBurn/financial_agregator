@@ -1,5 +1,6 @@
 from BaseBank import BaseBankScraper
-
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class AsakaBank(BaseBankScraper):
     def __init__(self):
@@ -21,12 +22,12 @@ class AsakaBank(BaseBankScraper):
 
     def fetch_data(self):
         try:
-            self.session.get(self.main_url, timeout=20)
-
+            self.session.get(self.main_url, timeout=20, verify=False)
             response = self.session.get(
                 self.api_url,
                 params={"page_size": 100},
                 timeout=20,
+                verify=False
             )
             response.raise_for_status()
             return response.json()
