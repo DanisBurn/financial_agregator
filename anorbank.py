@@ -2,7 +2,7 @@ import re
 from bs4 import BeautifulSoup
 from BaseBank import BaseBankScraper
 
-class Anorbank(BaseBankScraper):
+class AnorBank(BaseBankScraper):
     def __init__(self):
         super().__init__()
         self.bank_name = "Anorbank"

@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import urllib3
 from BaseBank import BaseBankScraper
 
-class Octobank(BaseBankScraper):
+class OctoBank(BaseBankScraper):
     def __init__(self):
         super().__init__()
         self.bank_name = "Octobank"
