@@ -1,12 +1,42 @@
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
+
+root_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(root_dir)
+
+
+def add_local_venv_site_packages():
+    venv_lib_dir = os.path.join(project_root, ".venv", "lib")
+    if not os.path.isdir(venv_lib_dir):
+        return
+
+    for entry in os.listdir(venv_lib_dir):
+        site_packages_dir = os.path.join(venv_lib_dir, entry, "site-packages")
+        if os.path.isdir(site_packages_dir) and site_packages_dir not in sys.path:
+            sys.path.insert(0, site_packages_dir)
+
+
+add_local_venv_site_packages()
 
 import urllib3
 
+try:
+    import joblib
+except ImportError:
+    joblib = None
 
-root_dir = os.path.dirname(os.path.abspath(__file__))
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
+
+try:
+    from pymongo import MongoClient, UpdateOne
+except ImportError:
+    MongoClient = None
+    UpdateOne = None
 
 banks_dir = os.path.join(root_dir, "banks")
 if banks_dir not in sys.path:
@@ -45,15 +75,52 @@ from banks.universalbank import UniversalBank
 from banks.xalqbank import XalqBank
 
 
+MONGO_URI = os.getenv(
+    "MONGO_URI",
+    "mongodb+srv://dubrovskayaamaliya_db_user:3Sbu5zoJLEb7gDoI@zoloto.wkualrv.mongodb.net/?appName=Zoloto",
+)
+MONGO_DB_NAME = "banks_data"
+MONGO_COLLECTION_NAME = "currency_rates"
+MONGO_GOLD_COLLECTION_NAME = "gold_rates"
+MONGO_PREDICTIONS_COLLECTION_NAME = "predictions"
+CBU_MODEL_PATH = os.path.join(
+    root_dir,
+    "prediction",
+    "linear_regression_usd_with_features.pkl",
+)
+DEFAULT_MODEL_FEATURES = ["lag1", "lag2", "day_of_week", "month", "day_of_month"]
+
+
 def build_banks():
     return [
-       Agrobank(), AloqaBank(), AnorBank(), ApexBank(), AsakaBank(),
-       AsiaAllianceBank(), BRB(), CBU(), DavrBank(), GarantBank(), 
-       HamkorBank(), HayotBank(), InfinBank(), IpakYuliBank(), 
-       IpotekaBank(), KapitalBank(), MikroKreditBank(), NBU(),
-       OctoBank(), OrientFinansBank(), PoytaxtBank(), SQB(),
-       TBCBank(), TengeBank(), TrustBank(), TuronBank(),
-       UniversalBank(), XalqBank(),
+        Agrobank(),
+        AloqaBank(),
+        AnorBank(),
+        ApexBank(),
+        AsakaBank(),
+        AsiaAllianceBank(),
+        BRB(),
+        CBU(),
+        DavrBank(),
+        GarantBank(),
+        HamkorBank(),
+        HayotBank(),
+        InfinBank(),
+        IpakYuliBank(),
+        IpotekaBank(),
+        KapitalBank(),
+        MikroKreditBank(),
+        NBU(),
+        OctoBank(),
+        OrientFinansBank(),
+        PoytaxtBank(),
+        SQB(),
+        TBCBank(),
+        TengeBank(),
+        TrustBank(),
+        TuronBank(),
+        UniversalBank(),
+        XalqBank(),
     ]
 
 
@@ -80,11 +147,309 @@ def save_report(report):
     return file_path
 
 
+def extract_numeric_rate(rate_info):
+    if not isinstance(rate_info, dict):
+        raise ValueError("Данные по курсу должны быть словарем")
+
+    for field_name in ("rate", "buy", "sell"):
+        value = rate_info.get(field_name)
+        if isinstance(value, (int, float)):
+            return float(value)
+
+    raise ValueError("Не найдено числовое значение курса")
+
+
+def extract_cbu_usd_rate(report):
+    banks_data = report.get("banks") or {}
+    cbu_data = banks_data.get("CBU") or {}
+    usd_data = cbu_data.get("USD")
+
+    if not usd_data:
+        raise ValueError("В final_report нет данных CBU/USD")
+
+    return extract_numeric_rate(usd_data)
+
+
+def load_prediction_model():
+    if joblib is None:
+        raise ImportError("Не установлен joblib")
+
+    if not os.path.exists(CBU_MODEL_PATH):
+        raise FileNotFoundError(f"Файл модели не найден: {CBU_MODEL_PATH}")
+
+    saved_obj = joblib.load(CBU_MODEL_PATH)
+
+    if hasattr(saved_obj, "predict"):
+        feature_names = list(getattr(saved_obj, "feature_names_in_", [])) or DEFAULT_MODEL_FEATURES
+        return saved_obj, feature_names
+
+    if isinstance(saved_obj, dict) and "model" in saved_obj:
+        model = saved_obj["model"]
+        feature_names = list(
+            saved_obj.get("features")
+            or getattr(model, "feature_names_in_", [])
+            or DEFAULT_MODEL_FEATURES
+        )
+        return model, feature_names
+
+    raise ValueError("Не удалось извлечь модель из pkl-файла")
+
+
+def build_prediction_payload(final_report, previous_report=None):
+    current_rate = extract_cbu_usd_rate(final_report)
+
+    previous_rate = current_rate
+    if previous_report:
+        try:
+            previous_rate = extract_cbu_usd_rate(previous_report)
+        except ValueError:
+            previous_rate = current_rate
+
+    base_timestamp = final_report.get("timestamp") or datetime.now().isoformat()
+    base_dt = datetime.fromisoformat(base_timestamp)
+    predicted_dt = base_dt + timedelta(days=1)
+
+    feature_values = {
+        "lag1": current_rate,
+        "lag2": previous_rate,
+        "day_of_week": predicted_dt.weekday(),
+        "month": predicted_dt.month,
+        "day_of_month": predicted_dt.day,
+    }
+
+    return predicted_dt, feature_values
+
+
+def build_model_input(feature_names, feature_values):
+    ordered_features = {
+        feature_name: feature_values[feature_name]
+        for feature_name in feature_names
+    }
+
+    if pd is not None:
+        return pd.DataFrame([ordered_features], columns=feature_names)
+
+    return [[ordered_features[feature_name] for feature_name in feature_names]]
+
+
+def add_cbu_prediction(report, previous_report=None, verbose=True):
+    try:
+        model, feature_names = load_prediction_model()
+        predicted_dt, feature_values = build_prediction_payload(
+            final_report=report,
+            previous_report=previous_report,
+        )
+
+        missing_features = [
+            feature_name
+            for feature_name in feature_names
+            if feature_name not in feature_values
+        ]
+        if missing_features:
+            raise ValueError(
+                "В модели есть неподдерживаемые признаки: "
+                + ", ".join(missing_features)
+            )
+
+        model_input = build_model_input(feature_names, feature_values)
+        predicted_rate = float(model.predict(model_input)[0])
+
+        report.setdefault("predictions", {})
+        report["predictions"].setdefault("CBU", {})
+        report["predictions"]["CBU"]["USD"] = {
+            "predicted_for_date": predicted_dt.date().isoformat(),
+            "predicted_rate": round(predicted_rate, 4),
+            "model": type(model).__name__,
+            "model_path": CBU_MODEL_PATH,
+            "features_used": {
+                feature_name: feature_values[feature_name]
+                for feature_name in feature_names
+            },
+        }
+
+        if verbose:
+            print("[+] Прогноз для CBU/USD успешно добавлен в final_report")
+    except Exception as e:
+        if verbose:
+            print(f"[-] Не удалось добавить прогноз CBU/USD: {e}")
+
+    return report
+
+
+def send_to_mongo(report, verbose=True):
+    if MongoClient is None or UpdateOne is None:
+        if verbose:
+            print("[-] Отправка в MongoDB пропущена: не установлен pymongo")
+        return {
+            "banks": {"status": "skipped", "reason": "pymongo_missing"},
+            "gold": {"status": "skipped", "reason": "pymongo_missing"},
+            "predictions": {"status": "skipped", "reason": "pymongo_missing"},
+        }
+
+    timestamp = report.get("currency_updated_at") or report.get("timestamp") or datetime.now().isoformat()
+    date_only = timestamp[:10]
+    client = None
+
+    try:
+        client = MongoClient(MONGO_URI)
+        db = client[MONGO_DB_NAME]
+        summary = {
+            "banks": {"status": "skipped", "reason": "no_data"},
+            "gold": {"status": "skipped", "reason": "no_data"},
+            "predictions": {"status": "skipped", "reason": "no_data"},
+        }
+
+        bank_operations = []
+        for bank_name, currencies in (report.get("banks") or {}).items():
+            for currency, rates in currencies.items():
+                buy = rates.get("buy") if isinstance(rates, dict) else None
+                sell = rates.get("sell") if isinstance(rates, dict) else None
+                spread = (
+                    sell - buy
+                    if isinstance(buy, (int, float)) and isinstance(sell, (int, float))
+                    else None
+                )
+
+                doc = {
+                    "timestamp": timestamp,
+                    "date_only": date_only,
+                    "bank_name": bank_name,
+                    "currency": currency,
+                    "buy": buy,
+                    "sell": sell,
+                    "spread": spread,
+                    "loaded_at": datetime.utcnow(),
+                }
+
+                if isinstance(rates, dict):
+                    for key, value in rates.items():
+                        if key not in {"buy", "sell"}:
+                            doc[key] = value
+
+                bank_operations.append(
+                    UpdateOne(
+                        {
+                            "timestamp": timestamp,
+                            "bank_name": bank_name,
+                            "currency": currency,
+                        },
+                        {"$set": doc},
+                        upsert=True,
+                    )
+                )
+
+        if bank_operations:
+            result = db[MONGO_COLLECTION_NAME].bulk_write(bank_operations, ordered=False)
+            summary["banks"] = {
+                "status": "success",
+                "inserted": result.upserted_count,
+                "updated": result.modified_count,
+            }
+        elif verbose:
+            print("[-] MongoDB banks: отправка пропущена, нет данных по валютам")
+
+        gold_operations = []
+        for weight, gold_rates in (report.get("gold") or {}).items():
+            doc = {
+                "timestamp": timestamp,
+                "date_only": date_only,
+                "weight": weight,
+                "loaded_at": datetime.utcnow(),
+            }
+
+            if isinstance(gold_rates, dict):
+                doc.update(gold_rates)
+
+            gold_operations.append(
+                UpdateOne(
+                    {
+                        "timestamp": timestamp,
+                        "weight": weight,
+                    },
+                    {"$set": doc},
+                    upsert=True,
+                )
+            )
+
+        if gold_operations:
+            result = db[MONGO_GOLD_COLLECTION_NAME].bulk_write(gold_operations, ordered=False)
+            summary["gold"] = {
+                "status": "success",
+                "inserted": result.upserted_count,
+                "updated": result.modified_count,
+            }
+        elif verbose:
+            print("[-] MongoDB gold: отправка пропущена, нет данных по золоту")
+
+        prediction_operations = []
+        for bank_name, currencies in (report.get("predictions") or {}).items():
+            for currency, prediction in currencies.items():
+                doc = {
+                    "timestamp": timestamp,
+                    "date_only": date_only,
+                    "bank_name": bank_name,
+                    "currency": currency,
+                    "loaded_at": datetime.utcnow(),
+                }
+
+                if isinstance(prediction, dict):
+                    doc.update(prediction)
+
+                prediction_operations.append(
+                    UpdateOne(
+                        {
+                            "timestamp": timestamp,
+                            "bank_name": bank_name,
+                            "currency": currency,
+                        },
+                        {"$set": doc},
+                        upsert=True,
+                    )
+                )
+
+        if prediction_operations:
+            result = db[MONGO_PREDICTIONS_COLLECTION_NAME].bulk_write(
+                prediction_operations,
+                ordered=False,
+            )
+            summary["predictions"] = {
+                "status": "success",
+                "inserted": result.upserted_count,
+                "updated": result.modified_count,
+            }
+        elif verbose:
+            print("[-] MongoDB predictions: отправка пропущена, нет данных по предикту")
+
+        if verbose:
+            for section_name, section_summary in summary.items():
+                if section_summary["status"] == "success":
+                    print(
+                        f"[MongoDB][{section_name}] inserted: {section_summary['inserted']}, "
+                        f"updated: {section_summary['updated']}"
+                    )
+
+        return summary
+    except Exception as e:
+        if verbose:
+            print(f"[-] Ошибка при отправке в MongoDB: {e}")
+        return {
+            "banks": {"status": "error", "reason": str(e)},
+            "gold": {"status": "error", "reason": str(e)},
+            "predictions": {"status": "error", "reason": str(e)},
+        }
+    finally:
+        if client is not None:
+            client.close()
+
+
 def refresh_report(include_gold=True, verbose=True):
+    previous_report = load_report()
     banks = build_banks()
     final_report = {
         "timestamp": datetime.now().isoformat(),
         "banks": {},
+        "gold": {},
+        "predictions": {},
     }
 
     for bank in banks:
@@ -123,6 +488,11 @@ def refresh_report(include_gold=True, verbose=True):
             if verbose:
                 print(f"[-] Ошибка в {gold.bank_name}: {e}")
 
+    final_report = add_cbu_prediction(
+        final_report,
+        previous_report=previous_report,
+        verbose=verbose,
+    )
     save_report(final_report)
     return final_report
 
@@ -130,10 +500,32 @@ def refresh_report(include_gold=True, verbose=True):
 def main():
     report = refresh_report(include_gold=True, verbose=True)
     file_path = build_report_path()
+
     print(f"\n[+] Готово! Банки обработаны: {len(report['banks'])}.")
     if report.get("gold"):
         print(f"[+] Данные по золоту сохранены: {len(report['gold'])} весов.")
     print(f"Результат здесь: {file_path}")
+
+    print("\nОтправляю данные в MongoDB...")
+    mongo_summary = send_to_mongo(report, verbose=True)
+
+    successful_sections = [
+        section_name
+        for section_name, section_summary in mongo_summary.items()
+        if section_summary.get("status") == "success"
+    ]
+    failed_sections = [
+        section_name
+        for section_name, section_summary in mongo_summary.items()
+        if section_summary.get("status") == "error"
+    ]
+
+    if failed_sections:
+        print(f"[-] Ошибка отправки в MongoDB для: {', '.join(failed_sections)}")
+    elif successful_sections:
+        print(f"Готово: в MongoDB отправлены разделы: {', '.join(successful_sections)}")
+    else:
+        print("[-] Данные не были отправлены в MongoDB")
 
 
 if __name__ == "__main__":
