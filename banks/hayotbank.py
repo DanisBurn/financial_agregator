@@ -26,4 +26,11 @@ class HayotBank(BaseBankScraper):
             except (ValueError, AttributeError, TypeError):
                 continue
                 
-        return results if results else None
+        if not results:
+            return None
+        ordered_results = {}
+        for code in target_codes:
+            if code in results:
+                ordered_results[code] = results[code]
+
+        return ordered_results

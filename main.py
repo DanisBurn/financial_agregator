@@ -1,7 +1,7 @@
 import json
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 root_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(root_dir)
@@ -318,7 +318,7 @@ def send_to_mongo(report, verbose=True):
                     "buy": buy,
                     "sell": sell,
                     "spread": spread,
-                    "loaded_at": datetime.utcnow(),
+                    "loaded_at": datetime.now(timezone.utc),
                 }
 
                 if isinstance(rates, dict):
@@ -354,7 +354,7 @@ def send_to_mongo(report, verbose=True):
                 "timestamp": timestamp,
                 "date_only": date_only,
                 "weight": weight,
-                "loaded_at": datetime.utcnow(),
+                "loaded_at": datetime.now(timezone.utc),
             }
 
             if isinstance(gold_rates, dict):
@@ -389,7 +389,7 @@ def send_to_mongo(report, verbose=True):
                     "date_only": date_only,
                     "bank_name": bank_name,
                     "currency": currency,
-                    "loaded_at": datetime.utcnow(),
+                    "loaded_at": datetime.now(timezone.utc),
                 }
 
                 if isinstance(prediction, dict):
