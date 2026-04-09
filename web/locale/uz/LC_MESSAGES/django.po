@@ -1,0 +1,67 @@
+# Uzbek translations for ProjectZoloto (Latin script)
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "ProjectZoloto"
+msgstr "ProjectZoloto"
+
+msgid "Project"
+msgstr "Loyiha"
+
+msgid "Rates"
+msgstr "Kurslar"
+
+msgid "Language"
+msgstr "Til"
+
+msgid "English"
+msgstr "Inglizcha"
+
+msgid "Russian"
+msgstr "Ruscha"
+
+msgid "Uzbek"
+msgstr "O‘zbekcha"
+
+msgid "Uzbekistan banks & gold — aggregate view. Data wiring is your next step."
+msgstr "O‘zbekiston banklari va oltin — yig‘ma ko‘rinish. Ma’lumotlarni keyingi qadamda ulang."
+
+msgid "Best rates"
+msgstr "Eng yaxshi kurslar"
+
+msgid "Best buy & sell rates"
+msgstr "Eng yaxshi sotib olish va sotish kurslari"
+
+msgid "Compare currencies and gold across Uzbekistan banks. Connect your JSON parsers in <code>rates/services/home_page.py</code> and map results here."
+msgstr "O‘zbekiston banklari bo‘yicha valyuta va oltinni solishtiring. JSON-parserlaringizni <code>rates/services/home_page.py</code> ichida ulang va natijani shu yerda chiqaring."
+
+msgid "Overview"
+msgstr "Umumiy ko‘rinish"
+
+msgid "Raw bank payloads loaded: %(n)s"
+msgstr "Bankdan yuklangan xom paketlar: %(n)s"
+
+msgid "Currencies"
+msgstr "Valyutalar"
+
+msgid "No currency rows yet — implement aggregation."
+msgstr "Valyuta qatorlari hali yo‘q — agregatsiyani qo‘shing."
+
+msgid "Gold"
+msgstr "Oltin"
+
+msgid "No gold rows yet — implement aggregation."
+msgstr "Oltin qatorlari hali yo‘q — agregatsiyani qo‘shing."
+
+msgid "Charts"
+msgstr "Grafiklar"
+
+msgid "Chart data is ready — plug in Chart.js or your library in extra_js."
+msgstr "Grafik ma’lumotlari tayyor — Chart.js yoki kutubxonangizni extra_js ichida ulang."
+
+msgid "Chart series empty — fill build_chart_series()."
+msgstr "Grafik qatori bo‘sh — build_chart_series() ni to‘ldiring."
+
+msgid "Forecast"
+msgstr "Prognoz"

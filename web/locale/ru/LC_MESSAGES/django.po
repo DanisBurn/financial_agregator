@@ -1,0 +1,67 @@
+# Russian translations for ProjectZoloto
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "ProjectZoloto"
+msgstr "ProjectZoloto"
+
+msgid "Project"
+msgstr "Проект"
+
+msgid "Rates"
+msgstr "Курсы"
+
+msgid "Language"
+msgstr "Язык"
+
+msgid "English"
+msgstr "English"
+
+msgid "Russian"
+msgstr "Русский"
+
+msgid "Uzbek"
+msgstr "Узбекский"
+
+msgid "Uzbekistan banks & gold — aggregate view. Data wiring is your next step."
+msgstr "Банки Узбекистана и золото — сводный вид. Подключите данные на следующем шаге."
+
+msgid "Best rates"
+msgstr "Лучшие курсы"
+
+msgid "Best buy & sell rates"
+msgstr "Лучшие курсы покупки и продажи"
+
+msgid "Compare currencies and gold across Uzbekistan banks. Connect your JSON parsers in <code>rates/services/home_page.py</code> and map results here."
+msgstr "Сравнивайте валюты и золото по банкам Узбекистана. Подключите JSON-парсеры в <code>rates/services/home_page.py</code> и выведите результат здесь."
+
+msgid "Overview"
+msgstr "Обзор"
+
+msgid "Raw bank payloads loaded: %(n)s"
+msgstr "Загружено сырых пакетов банков: %(n)s"
+
+msgid "Currencies"
+msgstr "Валюты"
+
+msgid "No currency rows yet — implement aggregation."
+msgstr "Строк по валютам пока нет — реализуйте агрегацию."
+
+msgid "Gold"
+msgstr "Золото"
+
+msgid "No gold rows yet — implement aggregation."
+msgstr "Строк по золоту пока нет — реализуйте агрегацию."
+
+msgid "Charts"
+msgstr "Графики"
+
+msgid "Chart data is ready — plug in Chart.js or your library in extra_js."
+msgstr "Данные для графика готовы — подключите Chart.js или свою библиотеку в extra_js."
+
+msgid "Chart series empty — fill build_chart_series()."
+msgstr "Ряд для графика пуст — заполните build_chart_series()."
+
+msgid "Forecast"
+msgstr "Прогноз"

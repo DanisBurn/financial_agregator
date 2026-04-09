@@ -1,0 +1,65 @@
+{% load i18n static %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{% trans "ProjectZoloto" %}{% endblock %}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Geologica:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'rates/app.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <div class="bg-blob" aria-hidden="true"></div>
+
+  <div class="wrap">
+    <header>
+      <div class="logo">KURS<span>.</span>UZ</div>
+      <div class="header-right">
+        <div class="live-badge" title="{% trans 'Live rates' %}">
+          <div class="live-dot"></div><span>{% trans "LIVE RATES" %}</span>
+        </div>
+
+        <div class="controls-group">
+          <form class="lang-switcher" action="{% url 'set_language' %}" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            {% get_current_language as LANG_CODE %}
+            <button class="lang-btn {% if LANG_CODE == 'uz' %}active{% endif %}" type="submit" name="language" value="uz">UZ</button>
+            <button class="lang-btn {% if LANG_CODE == 'ru' %}active{% endif %}" type="submit" name="language" value="ru">RU</button>
+            <button class="lang-btn {% if LANG_CODE == 'en' %}active{% endif %}" type="submit" name="language" value="en">EN</button>
+          </form>
+
+          <button class="theme-toggle" id="theme-btn" type="button" title="{% trans 'Theme' %}">🌙</button>
+
+          <div class="date-time">
+            <strong id="clock">--:--:--</strong><br>
+            <span id="date-str">--</span>
+          </div>
+        </div>
+      </div>
+    </header>
+  </div>
+
+  <div class="ticker-wrap">
+    <div class="ticker-inner" id="ticker">
+      {% block ticker %}{% endblock %}
+    </div>
+  </div>
+
+  <div class="wrap" style="padding-top:4px;">
+    {% block content %}{% endblock %}
+
+    <footer>
+      {% block footer %}
+        <div>© 2026 <strong>KURS.UZ</strong></div>
+        <div><span>{% trans "Data updates every 15 minutes" %}</span></div>
+        <div><span>{% trans "Central Bank & commercial bank data" %}</span></div>
+      {% endblock %}
+    </footer>
+  </div>
+
+  <script src="{% static 'rates/app.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

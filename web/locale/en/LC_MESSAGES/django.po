@@ -1,0 +1,67 @@
+# English (source) — helps tools; Django uses msgid when msgstr matches.
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "ProjectZoloto"
+msgstr "ProjectZoloto"
+
+msgid "Project"
+msgstr "Project"
+
+msgid "Rates"
+msgstr "Rates"
+
+msgid "Language"
+msgstr "Language"
+
+msgid "English"
+msgstr "English"
+
+msgid "Russian"
+msgstr "Russian"
+
+msgid "Uzbek"
+msgstr "Uzbek"
+
+msgid "Uzbekistan banks & gold — aggregate view. Data wiring is your next step."
+msgstr "Uzbekistan banks & gold — aggregate view. Data wiring is your next step."
+
+msgid "Best rates"
+msgstr "Best rates"
+
+msgid "Best buy & sell rates"
+msgstr "Best buy & sell rates"
+
+msgid "Compare currencies and gold across Uzbekistan banks. Connect your JSON parsers in <code>rates/services/home_page.py</code> and map results here."
+msgstr "Compare currencies and gold across Uzbekistan banks. Connect your JSON parsers in <code>rates/services/home_page.py</code> and map results here."
+
+msgid "Overview"
+msgstr "Overview"
+
+msgid "Raw bank payloads loaded: %(n)s"
+msgstr "Raw bank payloads loaded: %(n)s"
+
+msgid "Currencies"
+msgstr "Currencies"
+
+msgid "No currency rows yet — implement aggregation."
+msgstr "No currency rows yet — implement aggregation."
+
+msgid "Gold"
+msgstr "Gold"
+
+msgid "No gold rows yet — implement aggregation."
+msgstr "No gold rows yet — implement aggregation."
+
+msgid "Charts"
+msgstr "Charts"
+
+msgid "Chart data is ready — plug in Chart.js or your library in extra_js."
+msgstr "Chart data is ready — plug in Chart.js or your library in extra_js."
+
+msgid "Chart series empty — fill build_chart_series()."
+msgstr "Chart series empty — fill build_chart_series()."
+
+msgid "Forecast"
+msgstr "Forecast"

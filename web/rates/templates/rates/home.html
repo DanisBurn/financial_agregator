@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% load i18n l10n %}
+
+{% block title %}{% trans "Best rates" %} — {% trans "ProjectZoloto" %}{% endblock %}
+
+{% block ticker %}
+  {% if ticker_items %}
+    {% for item in ticker_items %}
+      <span class="tick-item">
+        <span>{{ item.flag }}</span>
+        <span class="tick-name">{{ item.code }}</span>
+        <span class="tick-val">{{ item.value }}</span>
+        {% if item.dir == 'up' %}
+          <span class="tick-up">▲</span>
+        {% elif item.dir == 'down' %}
+          <span class="tick-down">▼</span>
+        {% else %}
+          <span style="color:var(--muted)">—</span>
+        {% endif %}
+      </span>
+    {% endfor %}
+    {# repeat once more for smooth CSS ticker loop #}
+    {% for item in ticker_items %}
+      <span class="tick-item">
+        <span>{{ item.flag }}</span>
+        <span class="tick-name">{{ item.code }}</span>
+        <span class="tick-val">{{ item.value }}</span>
+        {% if item.dir == 'up' %}
+          <span class="tick-up">▲</span>
+        {% elif item.dir == 'down' %}
+          <span class="tick-down">▼</span>
+        {% else %}
+          <span style="color:var(--muted)">—</span>
+        {% endif %}
+      </span>
+    {% endfor %}
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="gold-hero fade-in">
+    <div class="gold-icon">🥇</div>
+    <div>
+      <div class="gold-label">{% trans "Central Bank official rate" %}</div>
+      <div class="gold-title">{% trans "GOLD (XAU) / UZS" %}</div>
+      <div class="gold-subtitle">{% trans "Central Bank rate · Troy ounce" %}</div>
+    </div>
+    <div class="gold-price-block">
+      <div class="gold-price">{{ gold.price_display|default:"—" }}</div>
+      <div class="gold-unit">{% trans "UZS / 1 gram" %}</div>
+    </div>
+    <div style="text-align:right; color:var(--muted); font-size:0.8rem;">
+      {% if aggregated.as_of %}{{ aggregated.as_of }}{% endif %}
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card fade-in">
+      <div class="stat-label">{% trans "Banks count" %}</div>
+      <div class="stat-val stat-accent">{{ stats.bank_count|default:0 }}</div>
+      <div class="stat-sub">{% trans "Data available" %}</div>
+    </div>
+    <div class="stat-card fade-in">
+      <div class="stat-label">{% trans "Highest buy (selected)" %}</div>
+      <div class="stat-val">{{ stats.top_buy_rate|default:"—" }}</div>
+      <div class="stat-sub">{{ stats.top_buy_bank|default:"—" }}</div>
+    </div>
+    <div class="stat-card fade-in">
+      <div class="stat-label">{% trans "Lowest sell (selected)" %}</div>
+      <div class="stat-val">{{ stats.low_sell_rate|default:"—" }}</div>
+      <div class="stat-sub">{{ stats.low_sell_bank|default:"—" }}</div>
+    </div>
+    <div class="stat-card fade-in">
+      <div class="stat-label">{% trans "Gold (1 g)" %}</div>
+      <div class="stat-val stat-gold">{{ gold.price_display|default:"—" }}</div>
+      <div class="stat-sub">{% trans "sum" %}{% if gold.change_pct %} {{ gold.change_pct }}%{% endif %}</div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-title">{% trans "Bank rates" %}</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span style="font-size:0.76rem;color:var(--muted);">{% trans "Sort by" %}:</span>
+      <select class="sort-sel" id="sort-select">
+        <option value="name">{% trans "By name" %}</option>
+        <option value="buy-desc">{% trans "Buy ↓" %}</option>
+        <option value="sell-asc">{% trans "Sell ↑" %}</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="currency-tabs">
+    {% for cur in currencies %}
+      <a class="ctab {% if cur == current_currency %}active{% endif %}" href="?c={{ cur }}">{{ cur }}</a>
+    {% endfor %}
+  </div>
+
+  <div class="search-wrap">
+    <span style="color:var(--muted)">🔎</span>
+    <input type="text" id="bank-search" placeholder="{% trans 'Search bank...' %}">
+  </div>
+
+  <div class="bank-grid" id="bank-grid">
+    {% for bank in banks %}
+      <div class="bank-card fade-in"
+           data-bank-card="1"
+           data-bank-name="{{ bank.name }}"
+           data-buy="{{ bank.buy }}"
+           data-sell="{{ bank.sell }}"
+           style="--accent-card:{{ bank.color }};animation-delay:{{ forloop.counter0|add:1 }}0ms">
+        <div class="bank-head">
+          <div class="bank-info">
+            <div class="bank-logo" style="background:{{ bank.bg }};color:{{ bank.color }}">{{ bank.abbr }}</div>
+            <div style="min-width:0;">
+              <div class="bank-name">{{ bank.name }}</div>
+              <div class="bank-type">{{ bank.type }}</div>
+            </div>
+          </div>
+          {% if bank.is_best_buy %}
+            <span class="best-badge best-buy">🏆 {% trans "Best" %}</span>
+          {% endif %}
+        </div>
+        <div class="rates-row">
+          <div class="rate-box">
+            <div class="rate-box-label">{% trans "Buy" %}</div>
+            <div class="rate-box-val buy">{{ bank.buy_display }}</div>
+            <div class="rate-box-sub">UZS / 1 {{ current_currency }}</div>
+            <div class="rate-box-change">
+              {% if bank.change_pct > 0 %}
+                <span class="up-text">▲ +{{ bank.change_pct }}%</span>
+              {% elif bank.change_pct < 0 %}
+                <span class="down-text">▼ {{ bank.change_pct }}%</span>
+              {% else %}
+                <span style="color:var(--muted)">— 0%</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="rate-box">
+            <div class="rate-box-label">{% trans "Sell" %}</div>
+            <div class="rate-box-val sell">{{ bank.sell_display }}</div>
+            <div class="rate-box-sub">UZS / 1 {{ current_currency }}</div>
+            <div class="rate-box-change">{% trans "Spread" %}: <strong style="color:var(--muted)">{{ bank.spread_display }}</strong></div>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="chart-card">
+        <div class="chart-title">{% trans "No data" %}</div>
+        <div class="chart-frame">{% trans "Connect parsers in rates/services/home_page.py" %}</div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="compare-section">
+    <div class="section-header">
+      <div class="section-title">{% trans "Rate comparison" %}</div>
+      <span style="font-size:0.76rem;color:var(--muted);">{% trans "For" %} {{ current_currency }}</span>
+    </div>
+    <div class="table-wrap">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>{% trans "Bank" %}</th>
+            <th>{% trans "Buy" %}</th>
+            <th>{% trans "Sell" %}</th>
+            <th>{% trans "Spread" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in compare_rows %}
+            <tr>
+              <td>
+                <div class="bank-cell">
+                  <div class="mini-logo" style="background:{{ row.bg }};color:{{ row.color }}">{{ row.abbr }}</div>
+                  <div>{{ row.name }}</div>
+                </div>
+              </td>
+              <td class="rate-cell buy">{{ row.buy_display }}</td>
+              <td class="rate-cell sell">{{ row.sell_display }}</td>
+              <td class="spread-cell">{{ row.spread_display }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">{% trans "History chart" %} ({{ current_currency }})</div>
+      <div class="chart-frame" id="chart-history">{% trans "Chart placeholder — connect Chart.js / ECharts here" %}</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">{% trans "Forecast" %}</div>
+      <div class="chart-frame" id="chart-forecast">
+        {% if forecast %}
+          {{ forecast }}
+        {% else %}
+          {% trans "Forecast placeholder — connect your model output" %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}
