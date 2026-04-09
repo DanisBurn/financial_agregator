@@ -3,11 +3,11 @@ import re
 from BaseBank import BaseBankScraper
 
 
-class PoytaxtBank(BaseBankScraper):
+class MikroKreditBank(BaseBankScraper):
     def __init__(self):
         super().__init__()
-        self.bank_name = "Poytaxt Bank"
-        self.main_url = "https://poytaxtbank.uz/ru/services/exchange-rates/"
+        self.bank_name = "MKBank"
+        self.main_url = "https://mkbank.uz/ru/services/exchange-rates/"
         self.api_url = self.main_url
         self.session.headers.update({
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -26,6 +26,8 @@ class PoytaxtBank(BaseBankScraper):
     def _to_float(self, value):
         cleaned = value.replace("\xa0", " ").replace(" ", "").replace(",", ".")
         cleaned = re.sub(r"[^0-9.]", "", cleaned)
+        if not cleaned:
+            return 0.0
         return float(cleaned)
 
     def _extract_office_table(self, html):
@@ -47,12 +49,9 @@ class PoytaxtBank(BaseBankScraper):
 
         row_pattern = re.compile(
             r"<tr>\s*"
-            r"<td>\s*"
-            r"<div[^>]*class=\"currency-name\"[^>]*>\s*"
-            r"<div[^>]*class=\"currency-name__code\"[^>]*>.*?<span>\s*(?P<code>[A-Z]{3})\s*</span>.*?"
-            r"</td>\s*"
-            r"<td>\s*.*?<span>\s*(?P<buy>[^<]+?)\s*</span>.*?</td>\s*"
-            r"<td>\s*.*?<span>\s*(?P<sell>[^<]+?)\s*</span>.*?</td>",
+            r"<td>\s*(?P<code>[A-Z]{3})\s*</td>\s*"
+            r"<td>\s*(?P<buy>[^<]*)\s*</td>\s*"
+            r"<td>\s*(?P<sell>[^<]*)\s*</td>",
             re.IGNORECASE | re.DOTALL,
         )
 
@@ -64,10 +63,15 @@ class PoytaxtBank(BaseBankScraper):
             if code not in target_codes or code in rates_by_code:
                 continue
 
+            buy_raw = match.group("buy").strip()
+            sell_raw = match.group("sell").strip()
+            if not buy_raw and not sell_raw:
+                continue
+
             try:
                 rates_by_code[code] = {
-                    "buy": self._to_float(match.group("buy")),
-                    "sell": self._to_float(match.group("sell")),
+                    "buy": self._to_float(buy_raw),
+                    "sell": self._to_float(sell_raw),
                 }
             except ValueError:
                 continue
@@ -81,6 +85,6 @@ class PoytaxtBank(BaseBankScraper):
 
 
 if __name__ == "__main__":
-    bank = PoytaxtBank()
+    bank = MikroKreditBank()
     data = bank.parse(bank.fetch_data())
     print(data)

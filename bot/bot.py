@@ -1,8 +1,14 @@
 from datetime import datetime, timedelta
 from html import escape
-
+import os
+import re
+import sys
 import telebot
 from telebot.types import KeyboardButton, ReplyKeyboardMarkup
+
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
 
 from main import load_report, refresh_report
 
@@ -37,6 +43,7 @@ SORT_BY_BUTTON = {
 
 _cached_report = None
 _chat_state = {}
+EXCLUDED_BEST_RATE_BANKS = {"CBU"}
 
 
 def get_chat_state(chat_id):
@@ -153,7 +160,10 @@ def sort_currency_rows(rows, sort_mode):
 
 
 def find_best_rate(rows, field, reverse):
-    candidates = [row for row in rows if row[field] is not None]
+    candidates = [
+        row for row in rows
+        if row[field] is not None and row["bank"] not in EXCLUDED_BEST_RATE_BANKS
+    ]
     if not candidates:
         return None
 
@@ -241,14 +251,14 @@ def format_currency_text(report, currency_code, sort_mode):
 
     if best_sell:
         lines.append(
-            "Самый выгодный для покупки валюты: "
+            "Лучший курс для физлица при покупке у банка: "
             f"<b>{escape(best_sell['bank'])}</b> "
             f"({format_number(best_sell['sell'])})"
         )
 
     if best_buy:
         lines.append(
-            "Лучший курс покупки банком: "
+            "Лучший курс для физлица при продаже банку: "
             f"<b>{escape(best_buy['bank'])}</b> "
             f"({format_number(best_buy['buy'])})"
         )
@@ -267,17 +277,37 @@ def format_currency_text(report, currency_code, sort_mode):
 
 def format_gold_text(report):
     gold = report.get("gold")
-    if not gold or not gold.get("items"):
+    if not gold:
         return "<b>Курс золота</b>\nДанные по золоту сейчас недоступны."
 
-    items = sorted(gold["items"], key=lambda item: item["weight_gram"])
+    items = []
+    if isinstance(gold, dict) and gold.get("items"):
+        items = sorted(gold["items"], key=lambda item: item["weight_gram"])
+    elif isinstance(gold, dict):
+        for weight_key, prices in gold.items():
+            if not isinstance(prices, dict):
+                continue
+
+            weight_match = re.search(r"(\d+)", str(weight_key))
+            if not weight_match:
+                continue
+
+            items.append({
+                "weight_gram": int(weight_match.group(1)),
+                "sell_price_uzs": prices.get("sell"),
+                "buyback_undamaged_uzs": prices.get("buy"),
+                "buyback_damaged_uzs": prices.get("buy_damaged"),
+            })
+
+        items.sort(key=lambda item: item["weight_gram"])
+
+    if not items:
+        return "<b>Курс золота</b>\nДанные по золоту сейчас недоступны."
+
     lines = [
         "<b>Стоимость золотых слитков ЦБ Узбекистана</b>",
         f"Обновлено: {format_timestamp(report)}",
     ]
-
-    if gold.get("date"):
-        lines.append(f"Дата ЦБ: {gold['date']}")
 
     lines.append("")
 

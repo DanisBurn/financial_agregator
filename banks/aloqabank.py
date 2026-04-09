@@ -3,11 +3,11 @@ import re
 from BaseBank import BaseBankScraper
 
 
-class PoytaxtBank(BaseBankScraper):
+class AloqaBank(BaseBankScraper):
     def __init__(self):
         super().__init__()
-        self.bank_name = "Poytaxt Bank"
-        self.main_url = "https://poytaxtbank.uz/ru/services/exchange-rates/"
+        self.bank_name = "AloqaBank"
+        self.main_url = "https://aloqabank.uz/ru/services/exchange-rates/"
         self.api_url = self.main_url
         self.session.headers.update({
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -49,7 +49,7 @@ class PoytaxtBank(BaseBankScraper):
             r"<tr>\s*"
             r"<td>\s*"
             r"<div[^>]*class=\"currency-name\"[^>]*>\s*"
-            r"<div[^>]*class=\"currency-name__code\"[^>]*>.*?<span>\s*(?P<code>[A-Z]{3})\s*</span>.*?"
+            r"<div[^>]*class=\"currency-name__code\"[^>]*>\s*(?P<code>[A-Z]{3})\s*</div>.*?"
             r"</td>\s*"
             r"<td>\s*.*?<span>\s*(?P<buy>[^<]+?)\s*</span>.*?</td>\s*"
             r"<td>\s*.*?<span>\s*(?P<sell>[^<]+?)\s*</span>.*?</td>",
@@ -81,6 +81,6 @@ class PoytaxtBank(BaseBankScraper):
 
 
 if __name__ == "__main__":
-    bank = PoytaxtBank()
+    bank = AloqaBank()
     data = bank.parse(bank.fetch_data())
     print(data)

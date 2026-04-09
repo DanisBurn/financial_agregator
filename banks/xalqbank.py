@@ -1,7 +1,7 @@
 from BaseBank import BaseBankScraper
 
 
-class XB(BaseBankScraper):
+class XalqBank(BaseBankScraper):
     def __init__(self):
         super().__init__()
         self.bank_name = "XB"
@@ -64,6 +64,6 @@ class XB(BaseBankScraper):
 
 
 if __name__ == "__main__":
-    bank = XB()
+    bank = XalqBank()
     data = bank.parse(bank.fetch_data())
     print(data)

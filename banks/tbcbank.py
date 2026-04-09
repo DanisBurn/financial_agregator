@@ -25,41 +25,43 @@ class TBCBank(BaseBankScraper):
             return None
 
     def parse(self, html):
-        if not html: return None
-        
-        results = {}
+        if not html:
+            return None
+
         target_codes = ['USD', 'EUR']
-        for code in target_codes:
-            match = re.search(fr'"{code}"\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)', html)
-            if match:
-                results[code] = {
-                    "buy": float(match.group(1)),
-                    "sell": float(match.group(2))
-                }
-        if len(results) == len(target_codes):
-            return results
         soup = BeautifulSoup(html, 'html.parser')
         rows = soup.find_all('tr')
-        
+        parsed_by_code = {}
+
         for row in rows:
             cells = row.find_all(['td', 'th'])
             if len(cells) >= 5:
                 text = row.get_text(separator=' ', strip=True).upper()
-                
+
                 for code in target_codes:
-                    if code in text and code not in results:
+                    if code in text and code not in parsed_by_code:
                         sell_text = cells[3].get_text(strip=True)
                         buy_text = cells[4].get_text(strip=True)
-                        
+
                         try:
                             buy_clean = re.sub(r'[^\d,.]', '', buy_text).replace(',', '.')
                             sell_clean = re.sub(r'[^\d,.]', '', sell_text).replace(',', '.')
-                            
-                            results[code] = {
+
+                            parsed_by_code[code] = {
                                 "buy": float(buy_clean),
                                 "sell": float(sell_clean)
                             }
                         except ValueError:
                             pass
-                            
+
+        results = {}
+        for code in target_codes:
+            if code in parsed_by_code:
+                results[code] = parsed_by_code[code]
+
         return results if results else None
+    
+if __name__ == "__main__":
+    bank = TBCBank()
+    data = bank.parse(bank.fetch_data())
+    print(data)

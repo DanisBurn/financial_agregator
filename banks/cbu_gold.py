@@ -2,6 +2,7 @@ import re
 from BaseBank import BaseBankScraper
 from bs4 import BeautifulSoup
 
+
 class CbuGold(BaseBankScraper):
     def __init__(self):
         super().__init__()
@@ -33,7 +34,6 @@ class CbuGold(BaseBankScraper):
 
         soup = BeautifulSoup(html, "html.parser")
         text = soup.get_text("\n", strip=True)
-        date_match = re.search(r"\b(\d{2}\.\d{2}\.\d{4})\b", text)
         pattern = re.compile(
             r"(\d+)\s*грамм\s*"
             r"([\d\s]+)\s*сум\s*"
@@ -42,20 +42,19 @@ class CbuGold(BaseBankScraper):
             re.IGNORECASE,
         )
 
-        items = []
+        prices_by_weight = {}
         for weight, sell, buy_good, buy_damaged in pattern.findall(text):
-            items.append({
-                "weight_gram": int(weight),
-                "sell_price_uzs": self.clean_price(sell),
-                "buyback_undamaged_uzs": self.clean_price(buy_good),
-                "buyback_damaged_uzs": self.clean_price(buy_damaged),
-            })
+            weight_key = f"{int(weight)} g"
+            prices_by_weight[weight_key] = {
+                "sell": self.clean_price(sell),
+                "buy": self.clean_price(buy_good),
+                "buy_damaged": self.clean_price(buy_damaged),
+            }
 
-        if not date_match and not items:
-            return None
+        return prices_by_weight or None
 
-        return {
-            "date": date_match.group(1) if date_match else None,
-            "url": self.api_url,
-            "items": items,
-        }
+if __name__ == "__main__":
+    bank = CbuGold()
+    c = bank.fetch_data()
+    data = bank.parse(c)
+    print(data)
