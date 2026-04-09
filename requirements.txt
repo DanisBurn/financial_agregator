@@ -1,0 +1,11 @@
+beautifulsoup4
+curl-cffi
+joblib
+numpy
+pandas
+pyTelegramBotAPI
+pymongo
+python-dotenv
+requests
+scikit-learn
+urllib3
