@@ -45,6 +45,20 @@ class HomePageServiceTests(SimpleTestCase):
         self.assertTrue(cbu_reference["rates"][0]["is_active"])
         self.assertEqual(cbu_reference["rates"][0]["rate_display"], "12 229")
 
+    def test_build_bank_cards_deduplicates_latest_doc_per_bank_currency(self):
+        raw = [
+            {"bank_name": "Agrobank", "currency": "USD", "buy": 12100, "sell": 12210, "timestamp": "2026-04-10T10:00:00"},
+            {"bank_name": "Agrobank", "currency": "USD", "buy": 12150, "sell": 12200, "timestamp": "2026-04-10T12:00:00"},
+            {"bank_name": "XB", "currency": "USD", "buy": 12140, "sell": 12195, "timestamp": "2026-04-10T11:00:00"},
+        ]
+
+        cards = home_page.build_bank_cards("USD", raw)
+
+        self.assertEqual([card.name for card in cards], ["Agrobank", "XalqBank"])
+        agrobank = next(card for card in cards if card.name == "Agrobank")
+        self.assertEqual(agrobank.buy, 12150)
+        self.assertEqual(agrobank.sell, 12200)
+
     def test_supported_currencies_ignore_reference_only_rows(self):
         currencies = home_page.get_supported_currencies(
             [
