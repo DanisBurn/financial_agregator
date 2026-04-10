@@ -23,7 +23,13 @@ def home(request):
     history_chart = home_services.build_history_chart(snapshot.cbu_history)
     forecast_chart = home_services.build_forecast_chart(
         raw=snapshot.current_currency_docs,
+        cbu_history=snapshot.cbu_history,
         prediction_docs=snapshot.prediction_docs,
+    )
+    cbu_reference = home_services.build_cbu_reference_block(
+        raw=snapshot.current_currency_docs,
+        current_currency=current_currency,
+        previous_raw=snapshot.previous_currency_docs,
     )
 
     context = {
@@ -37,6 +43,7 @@ def home(request):
         'gold': gold,
         'history_chart': history_chart,
         'forecast_chart': forecast_chart,
+        'cbu_reference': cbu_reference,
         'ticker_items': home_services.build_ticker_items(
             raw=raw,
             previous_raw=snapshot.previous_currency_docs,

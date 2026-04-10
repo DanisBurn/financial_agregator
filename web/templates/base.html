@@ -1,4 +1,4 @@
-{% load i18n static %}
+{% load i18n static rates_i18n %}
 <!DOCTYPE html>
 <html lang="{{ LANGUAGE_CODE }}">
 <head>
@@ -21,14 +21,12 @@
         </div>
 
         <div class="controls-group">
-          <form class="lang-switcher" action="{% url 'set_language' %}" method="post">
-            {% csrf_token %}
-            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <nav class="lang-switcher" aria-label="{% trans 'Language' %}">
             {% get_current_language as LANG_CODE %}
-            <button class="lang-btn {% if LANG_CODE == 'uz' %}active{% endif %}" type="submit" name="language" value="uz">UZ</button>
-            <button class="lang-btn {% if LANG_CODE == 'ru' %}active{% endif %}" type="submit" name="language" value="ru">RU</button>
-            <button class="lang-btn {% if LANG_CODE == 'en' %}active{% endif %}" type="submit" name="language" value="en">EN</button>
-          </form>
+            <a class="lang-btn {% if LANG_CODE == 'uz' %}active{% endif %}" href="{% switch_language_url 'uz' %}">UZ</a>
+            <a class="lang-btn {% if LANG_CODE == 'ru' %}active{% endif %}" href="{% switch_language_url 'ru' %}">RU</a>
+            <a class="lang-btn {% if LANG_CODE == 'en' %}active{% endif %}" href="{% switch_language_url 'en' %}">EN</a>
+          </nav>
 
           <button class="theme-toggle" id="theme-btn" type="button" title="{% trans 'Theme' %}">🌙</button>
 

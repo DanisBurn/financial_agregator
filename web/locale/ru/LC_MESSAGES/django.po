@@ -15,6 +15,9 @@ msgstr "LIVE КУРСЫ"
 msgid "Theme"
 msgstr "Тема"
 
+msgid "Language"
+msgstr "Язык"
+
 msgid "Data updates every 15 minutes"
 msgstr "Данные обновляются каждые 15 минут"
 
@@ -63,11 +66,11 @@ msgstr "UZS / %(weight)s"
 msgid "CBU history"
 msgstr "История CBU"
 
-msgid "Official daily rates for USD, EUR and RUB from the database"
-msgstr "Официальные дневные курсы USD, EUR и RUB из базы данных"
+msgid "Official daily rates for USD, EUR and RUB for the last week"
+msgstr "Официальные дневные курсы USD, EUR и RUB за последнюю неделю"
 
-msgid "CBU history will appear when archived rates exist in the database"
-msgstr "История CBU появится, когда в базе будут архивные курсы"
+msgid "CBU history will appear when weekly data is synced"
+msgstr "История CBU появится, когда недельные данные будут синхронизированы"
 
 msgid "Forecast"
 msgstr "Прогноз"
@@ -93,14 +96,41 @@ msgstr "Минимальная продажа для физлиц"
 msgid "Gold selected weight"
 msgstr "Золото, выбранный вес"
 
-msgid "Bank rates"
-msgstr "Курсы банков"
+msgid "Sell price"
+msgstr "Цена продажи"
+
+msgid "Buyback intact package"
+msgstr "Обратный выкуп в неповрежденной упаковке"
+
+msgid "Buyback damaged package"
+msgstr "Обратный выкуп в поврежденной упаковке"
+
+msgid "CBU official rates"
+msgstr "Официальные курсы CBU"
+
+msgid "Reference rates are shown separately and excluded from commercial bank rankings"
+msgstr "Справочные курсы показаны отдельно и не участвуют в рейтинге коммерческих банков"
+
+msgid "Selected"
+msgstr "Выбрано"
+
+msgid "Official rate"
+msgstr "Официальный курс"
+
+msgid "Commercial bank rates"
+msgstr "Курсы коммерческих банков"
 
 msgid "Sort by"
 msgstr "Сортировать по"
 
 msgid "Alphabetical"
 msgstr "По алфавиту"
+
+msgid "Best buy for individuals"
+msgstr "Лучшая покупка для физлиц"
+
+msgid "Best sell for individuals"
+msgstr "Лучшая продажа для физлиц"
 
 msgid "Sell ascending"
 msgstr "Продажа по возрастанию"
@@ -161,3 +191,6 @@ msgstr "Текущий курс CBU"
 
 msgid "Model forecast"
 msgstr "Прогноз модели"
+
+msgid "Current"
+msgstr "Текущий"

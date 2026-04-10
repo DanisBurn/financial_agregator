@@ -6,7 +6,7 @@ import tempfile
 import time
 from datetime import datetime, timedelta
 
-from main import add_predictions_to_saved_report, send_to_mongo
+from main import add_predictions_to_saved_report, refresh_cbu_history, send_to_mongo
 
 root_dir = os.path.dirname(os.path.abspath(__file__))
 if root_dir not in sys.path:
@@ -230,6 +230,8 @@ def refresh_report_server(verbose=True):
         mongo_report["gold_updated_at"] = report.get("gold_updated_at")
 
     mongo_summary = send_to_mongo(mongo_report, verbose=verbose)
+    cbu_history_result = refresh_cbu_history(verbose=verbose)
+    cbu_history_summary = cbu_history_result.get("mongo_summary", {})
 
     if verbose:
         print()
@@ -244,6 +246,15 @@ def refresh_report_server(verbose=True):
                 section_name
                 for section_name, section_summary in mongo_summary.items()
                 if section_summary.get("status") == "success"
+            )
+        )
+        print(
+            "[+] История CBU: "
+            + (
+                f"inserted={cbu_history_summary.get('inserted', 0)}, "
+                f"updated={cbu_history_summary.get('updated', 0)}"
+                if cbu_history_summary.get("status") == "success"
+                else cbu_history_summary.get("reason", cbu_history_summary.get("status", "skipped"))
             )
         )
 

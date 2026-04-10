@@ -15,6 +15,9 @@ msgstr "JONLI KURSLAR"
 msgid "Theme"
 msgstr "Mavzu"
 
+msgid "Language"
+msgstr "Til"
+
 msgid "Data updates every 15 minutes"
 msgstr "Ma’lumotlar har 15 daqiqada yangilanadi"
 
@@ -63,11 +66,11 @@ msgstr "UZS / %(weight)s"
 msgid "CBU history"
 msgstr "CBU tarixi"
 
-msgid "Official daily rates for USD, EUR and RUB from the database"
-msgstr "Bazadagi USD, EUR va RUB bo‘yicha rasmiy kunlik kurslar"
+msgid "Official daily rates for USD, EUR and RUB for the last week"
+msgstr "So‘nggi hafta uchun USD, EUR va RUB bo‘yicha rasmiy kunlik kurslar"
 
-msgid "CBU history will appear when archived rates exist in the database"
-msgstr "Bazada arxiv kurslar bo‘lganda CBU tarixi ko‘rinadi"
+msgid "CBU history will appear when weekly data is synced"
+msgstr "Haftalik ma’lumotlar sinxronlanganda CBU tarixi ko‘rinadi"
 
 msgid "Forecast"
 msgstr "Prognoz"
@@ -93,14 +96,41 @@ msgstr "Jismoniy shaxslar uchun eng past sotish"
 msgid "Gold selected weight"
 msgstr "Tanlangan vazndagi oltin"
 
-msgid "Bank rates"
-msgstr "Bank kurslari"
+msgid "Sell price"
+msgstr "Sotish narxi"
+
+msgid "Buyback intact package"
+msgstr "Shikastlanmagan qadoqdagi qayta sotib olish"
+
+msgid "Buyback damaged package"
+msgstr "Shikastlangan qadoqdagi qayta sotib olish"
+
+msgid "CBU official rates"
+msgstr "CBU rasmiy kurslari"
+
+msgid "Reference rates are shown separately and excluded from commercial bank rankings"
+msgstr "Ma’lumot kurslari alohida ko‘rsatiladi va tijorat banklari reytingiga kiritilmaydi"
+
+msgid "Selected"
+msgstr "Tanlangan"
+
+msgid "Official rate"
+msgstr "Rasmiy kurs"
+
+msgid "Commercial bank rates"
+msgstr "Tijorat banklari kurslari"
 
 msgid "Sort by"
 msgstr "Saralash"
 
 msgid "Alphabetical"
 msgstr "Alifbo bo‘yicha"
+
+msgid "Best buy for individuals"
+msgstr "Jismoniy shaxslar uchun eng yaxshi sotib olish"
+
+msgid "Best sell for individuals"
+msgstr "Jismoniy shaxslar uchun eng yaxshi sotish"
 
 msgid "Sell ascending"
 msgstr "Sotish o‘sish bo‘yicha"
@@ -161,3 +191,6 @@ msgstr "Joriy CBU kursi"
 
 msgid "Model forecast"
 msgstr "Model prognozi"
+
+msgid "Current"
+msgstr "Joriy"

@@ -1,6 +1,7 @@
 import json
 import math
 import os
+import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -84,6 +85,7 @@ MONGO_DB_NAME = "banks_data"
 MONGO_COLLECTION_NAME = "currency_rates"
 MONGO_GOLD_COLLECTION_NAME = "gold_rates"
 MONGO_PREDICTIONS_COLLECTION_NAME = "predictions"
+MONGO_CBU_HISTORY_COLLECTION_NAME = "cbu_history"
 PREDICTION_DIRECTORIES = [
     os.path.join(root_dir, "predict"),
     os.path.join(root_dir, "prediction"),
@@ -101,6 +103,8 @@ PREDICTION_MODEL_CANDIDATES = {
 }
 DEFAULT_MODEL_FEATURES = ["lag1", "lag2", "day_of_week", "month", "day_of_month"]
 MODEL_BANK_NAME = "CBU"
+CBU_HISTORY_CURRENCIES = ("USD", "EUR", "RUB")
+DEFAULT_CBU_HISTORY_DAYS = 7
 
 
 def build_banks():
@@ -140,6 +144,10 @@ def build_report_path():
     return os.path.join(root_dir, "currency_rates.json")
 
 
+def build_cbu_history_path():
+    return os.path.join(root_dir, "cbu_weekly_history.json")
+
+
 def load_report(file_path=None):
     file_path = file_path or build_report_path()
     if not os.path.exists(file_path):
@@ -157,6 +165,217 @@ def save_report(report):
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=4)
     return file_path
+
+
+def save_cbu_history_report(report):
+    file_path = build_cbu_history_path()
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(report, f, ensure_ascii=False, indent=4)
+    return file_path
+
+
+def build_cbu_history_api_url(date_only):
+    return f"https://cbu.uz/ru/arkhiv-kursov-valyut/json/all/{date_only}/"
+
+
+def iter_cbu_history_dates(days=DEFAULT_CBU_HISTORY_DAYS):
+    days = max(int(days or DEFAULT_CBU_HISTORY_DAYS), 1)
+    today = datetime.now().date()
+    for offset in range(days - 1, -1, -1):
+        yield today - timedelta(days=offset)
+
+
+def normalize_cbu_history_payload(raw_items, parser):
+    rates = {}
+    display_date = None
+
+    for item in raw_items or []:
+        currency = str(item.get("Ccy") or "").upper()
+        if currency not in CBU_HISTORY_CURRENCIES or currency in rates:
+            continue
+
+        try:
+            rate = parser._normalize_rate(item)
+        except (AttributeError, TypeError, ValueError):
+            continue
+
+        display_date = display_date or str(item.get("Date") or "")
+        rates[currency] = {
+            "rate": round(rate, 4),
+            "buy": round(rate, 4),
+            "sell": round(rate, 4),
+        }
+
+    return rates, display_date
+
+
+def fetch_json_with_curl(url):
+    completed = subprocess.run(
+        ["curl", "-sS", url],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(completed.stdout)
+
+
+def fetch_cbu_history(days=DEFAULT_CBU_HISTORY_DAYS, verbose=True):
+    parser = CBU()
+    history_days = []
+    generated_at = datetime.now(timezone.utc).isoformat()
+
+    try:
+        parser.session.get(parser.main_url, timeout=20)
+    except Exception:
+        pass
+
+    for day in iter_cbu_history_dates(days):
+        date_only = day.isoformat()
+        api_url = build_cbu_history_api_url(date_only)
+
+        try:
+            response = parser.session.get(api_url, timeout=20)
+            response.raise_for_status()
+            raw_items = response.json()
+        except Exception as e:
+            try:
+                raw_items = fetch_json_with_curl(api_url)
+                if verbose:
+                    print(f"[!] История CBU за {date_only} получена через curl fallback")
+            except Exception as curl_error:
+                if verbose:
+                    print(
+                        f"[-] Не удалось получить историю CBU за {date_only}: "
+                        f"{e}; curl fallback: {curl_error}"
+                    )
+                continue
+
+        rates, display_date = normalize_cbu_history_payload(raw_items, parser)
+        if not rates:
+            if verbose:
+                print(f"[-] История CBU за {date_only} не содержит целевых валют")
+            continue
+
+        history_days.append(
+            {
+                "date_only": date_only,
+                "display_date": display_date,
+                "rates": rates,
+            }
+        )
+
+        if verbose:
+            loaded_codes = ", ".join(sorted(rates))
+            print(f"[+] История CBU за {date_only} загружена: {loaded_codes}")
+
+    return {
+        "generated_at": generated_at,
+        "days": history_days,
+        "currencies": list(CBU_HISTORY_CURRENCIES),
+    }
+
+
+def iter_cbu_history_docs(report):
+    generated_at = str(report.get("generated_at") or datetime.now(timezone.utc).isoformat())
+
+    for day in report.get("days") or []:
+        date_only = str(day.get("date_only") or "").strip()
+        if not date_only:
+            continue
+
+        for currency, rate_payload in (day.get("rates") or {}).items():
+            if str(currency or "").upper() not in CBU_HISTORY_CURRENCIES:
+                continue
+
+            try:
+                numeric_rate = extract_numeric_rate(rate_payload)
+            except ValueError:
+                continue
+
+            yield {
+                "timestamp": f"{date_only}T00:00:00",
+                "date_only": date_only,
+                "bank_name": MODEL_BANK_NAME,
+                "currency": str(currency).upper(),
+                "rate": numeric_rate,
+                "buy": numeric_rate,
+                "sell": numeric_rate,
+                "source_generated_at": generated_at,
+                "source_date": day.get("display_date"),
+            }
+
+
+def send_cbu_history_to_mongo(report, verbose=True):
+    if MongoClient is None or UpdateOne is None:
+        if verbose:
+            print("[-] История CBU: отправка в MongoDB пропущена, не установлен pymongo")
+        return {"status": "skipped", "reason": "pymongo_missing"}
+
+    history_docs = list(iter_cbu_history_docs(report))
+    if not history_docs:
+        if verbose:
+            print("[-] История CBU: отправка в MongoDB пропущена, нет данных")
+        return {"status": "skipped", "reason": "no_data"}
+
+    client = None
+    try:
+        client = MongoClient(MONGO_URI)
+        collection = client[MONGO_DB_NAME][MONGO_CBU_HISTORY_COLLECTION_NAME]
+        operations = []
+
+        for doc in history_docs:
+            stored_doc = {
+                **doc,
+                "loaded_at": datetime.now(timezone.utc),
+            }
+            operations.append(
+                UpdateOne(
+                    {
+                        "date_only": doc["date_only"],
+                        "bank_name": doc["bank_name"],
+                        "currency": doc["currency"],
+                    },
+                    {"$set": stored_doc},
+                    upsert=True,
+                )
+            )
+
+        result = collection.bulk_write(operations, ordered=False)
+        summary = {
+            "status": "success",
+            "inserted": result.upserted_count,
+            "updated": result.modified_count,
+        }
+
+        if verbose:
+            print(
+                f"[MongoDB][cbu_history] inserted: {summary['inserted']}, "
+                f"updated: {summary['updated']}"
+            )
+
+        return summary
+    except Exception as e:
+        if verbose:
+            print(f"[-] Ошибка при отправке истории CBU в MongoDB: {e}")
+        return {"status": "error", "reason": str(e)}
+    finally:
+        if client is not None:
+            client.close()
+
+
+def refresh_cbu_history(days=DEFAULT_CBU_HISTORY_DAYS, verbose=True):
+    report = fetch_cbu_history(days=days, verbose=verbose)
+    file_path = save_cbu_history_report(report)
+    mongo_summary = send_cbu_history_to_mongo(report, verbose=verbose)
+
+    if verbose:
+        print(f"[+] История CBU сохранена: {file_path}")
+
+    return {
+        **report,
+        "file_path": file_path,
+        "mongo_summary": mongo_summary,
+    }
 
 
 def extract_numeric_rate(rate_info):
@@ -609,6 +828,21 @@ def main():
         print(f"Готово: в MongoDB отправлены разделы: {', '.join(successful_sections)}")
     else:
         print("[-] Данные не были отправлены в MongoDB")
+
+    print("\nСинхронизирую недельную историю CBU...")
+    history_result = refresh_cbu_history(verbose=True)
+    history_summary = history_result.get("mongo_summary", {})
+
+    if history_summary.get("status") == "success":
+        print(
+            "[+] История CBU отправлена в MongoDB: "
+            f"inserted={history_summary.get('inserted', 0)}, "
+            f"updated={history_summary.get('updated', 0)}"
+        )
+    elif history_summary.get("status") == "error":
+        print(f"[-] Ошибка отправки истории CBU: {history_summary.get('reason')}")
+    else:
+        print("[-] История CBU не была отправлена в MongoDB")
 
 
 if __name__ == "__main__":

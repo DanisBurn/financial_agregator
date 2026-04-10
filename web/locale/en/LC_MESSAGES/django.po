@@ -15,6 +15,9 @@ msgstr "LIVE RATES"
 msgid "Theme"
 msgstr "Theme"
 
+msgid "Language"
+msgstr "Language"
+
 msgid "Data updates every 15 minutes"
 msgstr "Data updates every 15 minutes"
 
@@ -63,11 +66,11 @@ msgstr "UZS / %(weight)s"
 msgid "CBU history"
 msgstr "CBU history"
 
-msgid "Official daily rates for USD, EUR and RUB from the database"
-msgstr "Official daily rates for USD, EUR and RUB from the database"
+msgid "Official daily rates for USD, EUR and RUB for the last week"
+msgstr "Official daily rates for USD, EUR and RUB for the last week"
 
-msgid "CBU history will appear when archived rates exist in the database"
-msgstr "CBU history will appear when archived rates exist in the database"
+msgid "CBU history will appear when weekly data is synced"
+msgstr "CBU history will appear when weekly data is synced"
 
 msgid "Forecast"
 msgstr "Forecast"
@@ -93,14 +96,41 @@ msgstr "Lowest sell for individuals"
 msgid "Gold selected weight"
 msgstr "Gold selected weight"
 
-msgid "Bank rates"
-msgstr "Bank rates"
+msgid "Sell price"
+msgstr "Sell price"
+
+msgid "Buyback intact package"
+msgstr "Buyback intact package"
+
+msgid "Buyback damaged package"
+msgstr "Buyback damaged package"
+
+msgid "CBU official rates"
+msgstr "CBU official rates"
+
+msgid "Reference rates are shown separately and excluded from commercial bank rankings"
+msgstr "Reference rates are shown separately and excluded from commercial bank rankings"
+
+msgid "Selected"
+msgstr "Selected"
+
+msgid "Official rate"
+msgstr "Official rate"
+
+msgid "Commercial bank rates"
+msgstr "Commercial bank rates"
 
 msgid "Sort by"
 msgstr "Sort by"
 
 msgid "Alphabetical"
 msgstr "Alphabetical"
+
+msgid "Best buy for individuals"
+msgstr "Best buy for individuals"
+
+msgid "Best sell for individuals"
+msgstr "Best sell for individuals"
 
 msgid "Sell ascending"
 msgstr "Sell ascending"
@@ -161,3 +191,6 @@ msgstr "Current CBU rate"
 
 msgid "Model forecast"
 msgstr "Model forecast"
+
+msgid "Current"
+msgstr "Current"

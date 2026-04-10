@@ -3,7 +3,7 @@
 import os
 import sys
 
-DEFAULT_RUNSERVER_ADDR = '127.0.0.1:8888'
+DEFAULT_RUNSERVER_ADDR = '127.0.0.1:8880'
 
 
 def main():

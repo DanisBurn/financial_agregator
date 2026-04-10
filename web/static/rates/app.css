@@ -206,6 +206,10 @@ body.light .live-badge {
   cursor: pointer;
   transition: all 0.2s;
   letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
 .lang-btn.active {
@@ -377,11 +381,14 @@ body.light .lang-btn.active {
   background: var(--gold-card-bg);
   border: 1px solid var(--gold-card-border);
   border-radius: 20px;
-  padding: 28px 32px;
+  padding: 22px 24px;
   display: grid;
-  grid-template-columns: auto minmax(220px, 1fr) minmax(280px, 1.1fr) auto;
-  align-items: center;
-  gap: 24px;
+  grid-template-columns: 76px minmax(260px, 1.15fr) minmax(300px, 1fr);
+  grid-template-areas:
+    "icon copy price"
+    "icon controls buyback";
+  align-items: start;
+  gap: 16px 18px;
   position: relative;
   overflow: hidden;
   transition: border-color 0.3s, transform 0.3s;
@@ -403,14 +410,24 @@ body.light .lang-btn.active {
 .gold-icon {
   width: 68px;
   height: 68px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #d4a843, #f0c040, #b8860b);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 224, 138, 0.22), rgba(159, 107, 8, 0.18));
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.9rem;
   flex-shrink: 0;
   box-shadow: 0 0 40px rgba(212, 168, 67, 0.35);
+  grid-area: icon;
+  margin-top: 4px;
+}
+
+.gold-bars-svg {
+  width: 56px;
+  height: 56px;
+}
+
+.gold-copy {
+  grid-area: copy;
 }
 
 .gold-label {
@@ -434,12 +451,13 @@ body.light .lang-btn.active {
   font-size: 0.78rem;
   color: var(--muted);
   margin-top: 5px;
-  max-width: 320px;
+  max-width: 420px;
 }
 
 .gold-controls {
   position: relative;
   z-index: 1;
+  grid-area: controls;
 }
 
 .gold-weights-label {
@@ -478,7 +496,7 @@ body.light .lang-btn.active {
 }
 
 .gold-meta {
-  margin-top: 12px;
+  margin-top: 10px;
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
@@ -494,11 +512,20 @@ body.light .lang-btn.active {
   text-align: right;
   position: relative;
   z-index: 1;
+  grid-area: price;
+}
+
+.gold-price-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--gold);
 }
 
 .gold-price {
   font-family: "Bebas Neue", sans-serif;
-  font-size: 2.9rem;
+  font-size: 2.45rem;
   color: var(--gold);
   letter-spacing: 2px;
   line-height: 1;
@@ -516,6 +543,37 @@ body.light .lang-btn.active {
   margin-top: 8px;
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+.gold-buyback-grid {
+  display: grid;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+  grid-area: buyback;
+}
+
+.gold-buyback-card {
+  border: 1px solid var(--gold-card-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.gold-buyback-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.gold-buyback-value {
+  margin-top: 6px;
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: 1px;
+  color: var(--text);
 }
 
 .charts-row {
@@ -542,6 +600,37 @@ body.light .lang-btn.active {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.chart-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.chart-tab-btn {
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  font-family: "Geologica", sans-serif;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chart-tab-btn:hover {
+  border-color: rgba(0, 229, 160, 0.25);
+  color: var(--text);
+}
+
+.chart-tab-btn.active {
+  border-color: var(--accent);
+  background: rgba(0, 229, 160, 0.1);
+  color: var(--accent);
 }
 
 .chart-title {
@@ -683,6 +772,85 @@ body.light .lang-btn.active {
 
 .stat-gold {
   color: var(--gold);
+}
+
+.cbu-panel {
+  margin-bottom: 28px;
+  background: linear-gradient(180deg, rgba(0, 229, 160, 0.04), transparent), var(--surface);
+  border: 1px solid rgba(0, 229, 160, 0.16);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+
+.cbu-panel-subtitle {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.cbu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.cbu-card {
+  background: var(--rate-box-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.cbu-card:hover {
+  border-color: rgba(0, 229, 160, 0.22);
+  transform: translateY(-2px);
+}
+
+.cbu-card--active {
+  border-color: rgba(0, 229, 160, 0.36);
+  background: linear-gradient(180deg, rgba(0, 229, 160, 0.07), transparent), var(--rate-box-bg);
+}
+
+.cbu-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cbu-card-flag {
+  font-size: 1rem;
+}
+
+.cbu-card-code {
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--text);
+}
+
+.cbu-card-rate {
+  margin-top: 14px;
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 2rem;
+  line-height: 1;
+  letter-spacing: 1px;
+  color: var(--accent);
+}
+
+.cbu-card-meta {
+  margin-top: 4px;
+  font-size: 0.68rem;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cbu-card-change {
+  margin-top: 10px;
+  font-size: 0.76rem;
+  font-weight: 600;
 }
 
 .section-header {
@@ -882,6 +1050,13 @@ body.light .bank-card:hover {
   white-space: nowrap;
 }
 
+.bank-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .best-buy {
   background: rgba(0, 229, 160, 0.12);
   color: var(--accent);
@@ -891,6 +1066,12 @@ body.light .bank-card:hover {
 body.light .best-buy {
   background: rgba(0, 163, 112, 0.08);
   border-color: rgba(0, 163, 112, 0.25);
+}
+
+.best-sell {
+  background: rgba(224, 85, 85, 0.12);
+  color: var(--accent3);
+  border: 1px solid rgba(224, 85, 85, 0.25);
 }
 
 .ref-badge {
@@ -1047,6 +1228,13 @@ body.light .best-buy {
   color: var(--muted);
 }
 
+.table-badges {
+  margin-top: 4px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 footer {
   margin-top: 52px;
   border-top: 1px solid var(--border);
@@ -1066,11 +1254,17 @@ footer strong {
 
 @media (max-width: 1024px) {
   .gold-hero {
-    grid-template-columns: auto 1fr;
+    grid-template-columns: 76px 1fr;
+    grid-template-areas:
+      "icon copy"
+      "controls controls"
+      "price price"
+      "buyback buyback";
   }
 
   .gold-controls,
-  .gold-price-block {
+  .gold-price-block,
+  .gold-buyback-grid {
     grid-column: 1 / -1;
   }
 
@@ -1082,6 +1276,10 @@ footer strong {
 @media (max-width: 900px) {
   .stats-row {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .cbu-grid {
+    grid-template-columns: 1fr;
   }
 
   .compare-table th:nth-child(n + 5),
@@ -1104,11 +1302,26 @@ footer strong {
   }
 
   .gold-hero {
-    padding: 24px 20px;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "icon"
+      "copy"
+      "controls"
+      "price"
+      "buyback";
+    padding: 20px 18px;
   }
 
   .gold-price-block {
     text-align: left;
+  }
+
+  .gold-icon {
+    margin-top: 0;
+  }
+
+  .gold-buyback-grid {
+    grid-template-columns: 1fr;
   }
 
   .stats-row {

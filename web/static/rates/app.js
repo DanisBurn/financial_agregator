@@ -63,10 +63,17 @@ function initThemeToggle() {
   });
 }
 
+function parseOptionalNumber(rawValue) {
+  if (rawValue === null || rawValue === undefined || rawValue === '') return null;
+  const numeric = Number(rawValue);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
 function initBankSearchAndSort() {
   const search = document.getElementById('bank-search');
   const sortSel = document.getElementById('sort-select');
   const grid = document.getElementById('bank-grid');
+  const compareRows = () => Array.from(document.querySelectorAll('[data-compare-row="1"]'));
   if (!grid) return;
 
   const cards = () => Array.from(grid.querySelectorAll('[data-bank-card="1"]'));
@@ -77,26 +84,46 @@ function initBankSearchAndSort() {
       const name = (el.getAttribute('data-bank-name') || '').toLowerCase();
       el.style.display = !q || name.includes(q) ? '' : 'none';
     });
+    compareRows().forEach((row) => {
+      const name = (row.getAttribute('data-bank-name') || '').toLowerCase();
+      row.style.display = !q || name.includes(q) ? '' : 'none';
+    });
   };
 
   const applySort = () => {
     if (!sortSel) return;
     const mode = sortSel.value;
-    const list = cards();
+    const cardList = cards();
+    const tableRows = compareRows();
 
     const keyName = (el) => el.getAttribute('data-bank-name') || '';
-    const keyBuy = (el) => Number(el.getAttribute('data-buy') || '0');
-    const keySell = (el) => Number(el.getAttribute('data-sell') || '0');
-
-    list.sort((a, b) => {
-      if (mode === 'buy-desc') return keyBuy(b) - keyBuy(a);
-      if (mode === 'buy-asc') return keyBuy(a) - keyBuy(b);
-      if (mode === 'sell-desc') return keySell(b) - keySell(a);
-      if (mode === 'sell-asc') return keySell(a) - keySell(b);
+    const keyBuy = (el) => parseOptionalNumber(el.getAttribute('data-buy'));
+    const keySell = (el) => parseOptionalNumber(el.getAttribute('data-sell'));
+    const compareNullable = (left, right, fallback) => {
+      if (left === null && right === null) return fallback;
+      if (left === null) return 1;
+      if (right === null) return -1;
+      return 0;
+    };
+    const comparator = (a, b) => {
+      if (mode === 'buy-best') {
+        const nullableResult = compareNullable(keyBuy(a), keyBuy(b), keyName(a).localeCompare(keyName(b), getLocale()));
+        if (nullableResult !== 0) return nullableResult;
+        return keyBuy(b) - keyBuy(a) || keyName(a).localeCompare(keyName(b), getLocale());
+      }
+      if (mode === 'sell-best') {
+        const nullableResult = compareNullable(keySell(a), keySell(b), keyName(a).localeCompare(keyName(b), getLocale()));
+        if (nullableResult !== 0) return nullableResult;
+        return keySell(a) - keySell(b) || keyName(a).localeCompare(keyName(b), getLocale());
+      }
       return keyName(a).localeCompare(keyName(b), getLocale());
-    });
+    };
 
-    list.forEach((el) => grid.appendChild(el));
+    cardList.sort(comparator);
+    tableRows.sort(comparator);
+
+    cardList.forEach((el) => grid.appendChild(el));
+    tableRows.forEach((row) => row.parentNode?.appendChild(row));
   };
 
   applySort();
@@ -113,6 +140,8 @@ function initGoldSelector() {
   const unitEl = document.querySelector('[data-gold-unit]');
   const perGramEl = document.querySelector('[data-gold-per-gram]');
   const changeEl = document.querySelector('[data-gold-change]');
+  const buyEl = document.querySelector('[data-gold-buy]');
+  const buyDamagedEl = document.querySelector('[data-gold-buy-damaged]');
   const statPriceEl = document.querySelector('[data-gold-stat-price]');
   const statWeightEl = document.querySelector('[data-gold-stat-weight]');
   const unitPrefix = 'UZS /';
@@ -127,10 +156,12 @@ function initGoldSelector() {
       button.classList.toggle('active', button.getAttribute('data-gold-weight') === weight);
     });
 
-    if (priceEl) priceEl.textContent = option.price_display || '—';
+    if (priceEl) priceEl.textContent = option.sell_display || option.price_display || '—';
     if (unitEl) unitEl.textContent = `${unitPrefix} ${option.weight}`;
     if (perGramEl) perGramEl.textContent = option.per_gram_display || '—';
-    if (statPriceEl) statPriceEl.textContent = option.price_display || '—';
+    if (buyEl) buyEl.textContent = option.buy_display || '—';
+    if (buyDamagedEl) buyDamagedEl.textContent = option.buy_damaged_display || '—';
+    if (statPriceEl) statPriceEl.textContent = option.sell_display || option.price_display || '—';
     if (statWeightEl) statWeightEl.textContent = option.weight || '—';
     if (changeEl) {
       const change = Number(option.change_pct || 0);
@@ -237,7 +268,10 @@ function renderLineChart(containerId, data) {
     .map((series) => {
       const segments = buildLineSegments(series.values || [], xForIndex, yForValue);
       const paths = segments
-        .map((points) => `<path class="chart-series-line" d="${buildPath(points)}" stroke="${series.color}"></path>`)
+        .map(
+          (points) =>
+            `<path class="chart-series-line" d="${buildPath(points)}" stroke="${series.color}"${series.dasharray ? ` stroke-dasharray="${series.dasharray}"` : ''}></path>`,
+        )
         .join('');
       const points = segments
         .flat()
@@ -267,13 +301,49 @@ function renderLineChart(containerId, data) {
   `;
 }
 
+function setupTabbedChart({ chartData, containerId, chartKey }) {
+  if (!chartData || !chartData.datasets) return () => {};
+
+  const buttons = Array.from(document.querySelectorAll(`[data-chart-switch="${chartKey}"]`));
+  const metaEl = document.querySelector(`[data-chart-meta="${chartKey}"]`);
+  const datasetKeys = Object.keys(chartData.datasets);
+  let activeKey = chartData.selected_key && chartData.datasets[chartData.selected_key]
+    ? chartData.selected_key
+    : datasetKeys[0];
+
+  const renderActive = () => {
+    const activeDataset = chartData.datasets[activeKey];
+    if (!activeDataset) return;
+
+    buttons.forEach((button) => {
+      button.classList.toggle('active', button.getAttribute('data-chart-key') === activeKey);
+    });
+
+    if (metaEl) metaEl.textContent = activeDataset.meta || '—';
+    renderLineChart(containerId, activeDataset);
+  };
+
+  buttons.forEach((button) => {
+    button.addEventListener('click', () => {
+      activeKey = button.getAttribute('data-chart-key') || activeKey;
+      renderActive();
+    });
+  });
+
+  renderActive();
+  return renderActive;
+}
+
 function initCharts() {
   const historyChart = parseJsonScript('history-chart-data');
   const forecastChart = parseJsonScript('forecast-chart-data');
+  const renderers = [
+    setupTabbedChart({ chartData: historyChart, containerId: 'chart-history', chartKey: 'history' }),
+    setupTabbedChart({ chartData: forecastChart, containerId: 'chart-forecast', chartKey: 'forecast' }),
+  ];
 
   const render = () => {
-    renderLineChart('chart-history', historyChart);
-    renderLineChart('chart-forecast', forecastChart);
+    renderers.forEach((renderChart) => renderChart());
   };
 
   let resizeTimer = null;

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
 from datetime import datetime
@@ -21,6 +22,9 @@ MONGO_DB_NAME = "banks_data"
 MONGO_COLLECTION_NAME = "currency_rates"
 MONGO_GOLD_COLLECTION_NAME = "gold_rates"
 MONGO_PREDICTIONS_COLLECTION_NAME = "predictions"
+MONGO_CBU_HISTORY_COLLECTION_NAME = "cbu_history"
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+CBU_HISTORY_JSON_PATH = os.path.join(ROOT_DIR, "cbu_weekly_history.json")
 
 DEFAULT_CURRENCIES = ["USD", "EUR", "RUB"]
 PREFERRED_CURRENCY_ORDER = ["USD", "EUR", "RUB", "CNY", "GBP", "JPY", "KZT", "TRY", "AED", "KRW"]
@@ -89,6 +93,7 @@ class BankCard:
     sell: float | None
     change_pct: float
     is_best_buy: bool
+    is_best_sell: bool
     is_reference: bool
 
     @property
@@ -106,7 +111,7 @@ class BankCard:
         return format_rate(self.sell - self.buy)
 
 
-def _empty_snapshot() -> DashboardSnapshot:
+def _empty_snapshot(cbu_history: dict[str, list[dict[str, Any]]] | None = None) -> DashboardSnapshot:
     return DashboardSnapshot(
         current_date=None,
         previous_date=None,
@@ -115,7 +120,7 @@ def _empty_snapshot() -> DashboardSnapshot:
         current_gold_docs=[],
         previous_gold_docs=[],
         prediction_docs=[],
-        cbu_history={},
+        cbu_history=cbu_history or {},
     )
 
 
@@ -149,7 +154,7 @@ def _find_previous_date(collection, current_date: str | None) -> str | None:
     return doc.get("date_only") if doc else None
 
 
-def _load_cbu_history(collection) -> dict[str, list[dict[str, Any]]]:
+def _load_cbu_history_from_collection(collection) -> dict[str, list[dict[str, Any]]]:
     history: dict[str, list[dict[str, Any]]] = {}
     for currency in HISTORY_CURRENCIES:
         docs = list(
@@ -158,23 +163,75 @@ def _load_cbu_history(collection) -> dict[str, list[dict[str, Any]]]:
                 {"_id": 0},
             )
             .sort([("date_only", -1), ("timestamp", -1)])
-            .limit(14)
+            .limit(7)
         )
         history[currency] = list(reversed(docs))
     return history
 
 
+def _load_cbu_history_from_file() -> dict[str, list[dict[str, Any]]]:
+    if not os.path.exists(CBU_HISTORY_JSON_PATH):
+        return {}
+
+    try:
+        with open(CBU_HISTORY_JSON_PATH, "r", encoding="utf-8") as file_obj:
+            payload = file_obj.read().strip()
+    except OSError:
+        return {}
+
+    if not payload:
+        return {}
+
+    try:
+        raw = json.loads(payload)
+    except ValueError:
+        return {}
+
+    history: dict[str, list[dict[str, Any]]] = {currency: [] for currency in HISTORY_CURRENCIES}
+    for day in raw.get("days") or []:
+        date_only = str(day.get("date_only") or "").strip()
+        if not date_only:
+            continue
+
+        for currency in HISTORY_CURRENCIES:
+            rate_payload = (day.get("rates") or {}).get(currency)
+            if not isinstance(rate_payload, dict):
+                continue
+
+            rate = _extract_doc_rate(rate_payload)
+            if rate is None:
+                continue
+
+            history[currency].append(
+                {
+                    "date_only": date_only,
+                    "bank_name": "CBU",
+                    "currency": currency,
+                    "rate": rate,
+                    "buy": rate,
+                    "sell": rate,
+                }
+            )
+
+    for currency in HISTORY_CURRENCIES:
+        history[currency] = sorted(history[currency], key=lambda doc: str(doc.get("date_only") or ""))[-7:]
+
+    return history
+
+
 def load_dashboard_snapshot() -> DashboardSnapshot:
+    file_cbu_history = _load_cbu_history_from_file()
     client = _create_client()
     if client is None:
-        return _empty_snapshot()
+        return _empty_snapshot(cbu_history=file_cbu_history)
 
     try:
         db = client[MONGO_DB_NAME]
         currency_collection = db[MONGO_COLLECTION_NAME]
+        cbu_history = _load_cbu_history_from_collection(db[MONGO_CBU_HISTORY_COLLECTION_NAME]) or file_cbu_history
         current_date = _find_latest_date(currency_collection)
         if not current_date:
-            return _empty_snapshot()
+            return _empty_snapshot(cbu_history=cbu_history)
 
         previous_date = _find_previous_date(currency_collection, current_date)
 
@@ -215,10 +272,10 @@ def load_dashboard_snapshot() -> DashboardSnapshot:
             current_gold_docs=current_gold_docs,
             previous_gold_docs=previous_gold_docs,
             prediction_docs=prediction_docs,
-            cbu_history=_load_cbu_history(currency_collection),
+            cbu_history=cbu_history,
         )
     except Exception:
-        return _empty_snapshot()
+        return _empty_snapshot(cbu_history=file_cbu_history)
     finally:
         client.close()
 
@@ -258,6 +315,16 @@ def _format_date(value: str | None) -> str | None:
 
     try:
         return datetime.fromisoformat(value).strftime("%d.%m.%Y")
+    except ValueError:
+        return value
+
+
+def _format_chart_date(value: str | None) -> str | None:
+    if not value:
+        return None
+
+    try:
+        return datetime.fromisoformat(value).strftime("%d.%m")
     except ValueError:
         return value
 
@@ -407,7 +474,11 @@ def aggregate_best_rates(raw: list[dict[str, Any]]) -> dict[str, Any]:
 
 def get_supported_currencies(raw: list[dict[str, Any]] | None = None) -> list[str]:
     raw = raw or []
-    codes = {str(doc.get("currency") or "").upper() for doc in raw if doc.get("currency")}
+    codes = {
+        str(doc.get("currency") or "").upper()
+        for doc in raw
+        if doc.get("currency") and not _is_reference_bank(str(doc.get("bank_name") or ""))
+    }
     sorted_codes = _sorted_currencies(codes)
     return sorted_codes or DEFAULT_CURRENCIES
 
@@ -433,6 +504,8 @@ def build_bank_cards(
         raw_bank_name = str(doc.get("bank_name") or "").strip()
         if not raw_bank_name:
             continue
+        if _is_reference_bank(raw_bank_name):
+            continue
 
         display_name = _display_bank_name(raw_bank_name)
         buy = _to_float(doc.get("buy"))
@@ -455,7 +528,7 @@ def build_bank_cards(
             BankCard(
                 id=_slugify_bank(display_name),
                 name=display_name,
-                type=_("Central bank") if _is_reference_bank(raw_bank_name) else _("Commercial bank"),
+                type=_("Commercial bank"),
                 abbr=meta["abbr"],
                 color=meta["color"],
                 bg=meta["bg"],
@@ -463,24 +536,81 @@ def build_bank_cards(
                 sell=sell,
                 change_pct=change_pct,
                 is_best_buy=False,
-                is_reference=_is_reference_bank(raw_bank_name),
+                is_best_sell=False,
+                is_reference=False,
             )
         )
 
-    best_buy = max(
-        (card.buy for card in cards if card.buy is not None and not card.is_reference),
-        default=None,
-    )
+    best_buy = max((card.buy for card in cards if card.buy is not None), default=None)
+    best_sell = min((card.sell for card in cards if card.sell is not None), default=None)
 
     return [
         BankCard(
             **{
                 **card.__dict__,
-                "is_best_buy": bool(best_buy is not None and not card.is_reference and card.buy == best_buy),
+                "is_best_buy": bool(best_buy is not None and card.buy == best_buy),
+                "is_best_sell": bool(best_sell is not None and card.sell == best_sell),
             }
         )
         for card in sorted(cards, key=lambda card: card.name.lower())
     ]
+
+
+def build_cbu_reference_block(
+    raw: list[dict[str, Any]],
+    current_currency: str,
+    previous_raw: list[dict[str, Any]] | None = None,
+) -> dict[str, Any] | None:
+    previous_index = _index_currency_docs(previous_raw or [])
+    current_docs = {
+        str(doc.get("currency") or "").upper(): doc
+        for doc in raw
+        if str(doc.get("bank_name") or "") == "CBU" and doc.get("currency")
+    }
+
+    if not current_docs:
+        return None
+
+    ordered_codes = [code for code in DEFAULT_CURRENCIES if code in current_docs]
+    if current_currency in current_docs and current_currency not in ordered_codes:
+        ordered_codes.append(current_currency)
+
+    rates = []
+    as_of_candidates = []
+    for code in ordered_codes:
+        doc = current_docs.get(code)
+        if not doc:
+            continue
+
+        current_rate = _extract_doc_rate(doc)
+        if current_rate is None:
+            continue
+
+        previous_doc = previous_index.get(("CBU", code))
+        previous_rate = _extract_doc_rate(previous_doc) if previous_doc else None
+        change_pct = 0.0
+        if previous_rate:
+            change_pct = round(((current_rate - previous_rate) / previous_rate) * 100, 2)
+
+        as_of_candidates.append(_doc_timestamp(doc))
+        rates.append(
+            {
+                "code": code,
+                "flag": FLAG_BY_CURRENCY.get(code, "💱"),
+                "rate": current_rate,
+                "rate_display": format_rate(current_rate),
+                "change_pct": change_pct,
+                "is_active": code == current_currency,
+            }
+        )
+
+    if not rates:
+        return None
+
+    return {
+        "rates": rates,
+        "as_of": _format_timestamp(max((value for value in as_of_candidates if value), default=None)),
+    }
 
 
 def build_compare_rows(banks: list[BankCard]) -> list[dict[str, Any]]:
@@ -494,6 +624,10 @@ def build_compare_rows(banks: list[BankCard]) -> list[dict[str, Any]]:
             "buy_display": bank.buy_display,
             "sell_display": bank.sell_display,
             "spread_display": bank.spread_display,
+            "buy": bank.buy,
+            "sell": bank.sell,
+            "is_best_buy": bank.is_best_buy,
+            "is_best_sell": bank.is_best_sell,
             "is_reference": bank.is_reference,
         }
         for bank in sorted(
@@ -533,27 +667,35 @@ def build_gold_options(
 
     for weight, doc in current_index.items():
         grams = _parse_weight_grams(weight)
-        current_price = _to_float(doc.get("sell")) or _to_float(doc.get("buy"))
-        if not grams or current_price is None:
+        current_sell = _to_float(doc.get("sell"))
+        current_buy = _to_float(doc.get("buy"))
+        current_buy_damaged = _to_float(doc.get("buy_damaged"))
+        if not grams or current_sell is None:
             continue
 
         previous_doc = previous_index.get(weight)
-        previous_price = None
+        previous_sell = None
         if previous_doc:
-            previous_price = _to_float(previous_doc.get("sell")) or _to_float(previous_doc.get("buy"))
+            previous_sell = _to_float(previous_doc.get("sell"))
 
         change_pct = None
-        if previous_price:
-            change_pct = round(((current_price - previous_price) / previous_price) * 100, 2)
+        if previous_sell:
+            change_pct = round(((current_sell - previous_sell) / previous_sell) * 100, 2)
 
         actual_options[weight] = {
             "weight": weight,
             "grams": grams,
-            "price": current_price,
-            "price_display": format_rate(current_price),
-            "previous_price": previous_price,
-            "per_gram": current_price / grams,
-            "per_gram_display": format_rate(current_price / grams),
+            "price": current_sell,
+            "price_display": format_rate(current_sell),
+            "sell": current_sell,
+            "sell_display": format_rate(current_sell),
+            "buy": current_buy,
+            "buy_display": format_rate(current_buy),
+            "buy_damaged": current_buy_damaged,
+            "buy_damaged_display": format_rate(current_buy_damaged),
+            "previous_price": previous_sell,
+            "per_gram": current_sell / grams,
+            "per_gram_display": format_rate(current_sell / grams),
             "change_pct": change_pct,
             "is_derived": False,
         }
@@ -575,6 +717,12 @@ def build_gold_options(
                 "grams": 1,
                 "price": smallest["per_gram"],
                 "price_display": format_rate(smallest["per_gram"]),
+                "sell": smallest["per_gram"],
+                "sell_display": format_rate(smallest["per_gram"]),
+                "buy": (smallest["buy"] / smallest["grams"]) if smallest.get("buy") is not None else None,
+                "buy_display": format_rate((smallest["buy"] / smallest["grams"]) if smallest.get("buy") is not None else None),
+                "buy_damaged": (smallest["buy_damaged"] / smallest["grams"]) if smallest.get("buy_damaged") is not None else None,
+                "buy_damaged_display": format_rate((smallest["buy_damaged"] / smallest["grams"]) if smallest.get("buy_damaged") is not None else None),
                 "previous_price": previous_per_gram,
                 "per_gram": smallest["per_gram"],
                 "per_gram_display": format_rate(smallest["per_gram"]),
@@ -611,6 +759,9 @@ def build_gold(
     if not options:
         return {
             "price_display": "—",
+            "sell_display": "—",
+            "buy_display": "—",
+            "buy_damaged_display": "—",
             "change_pct": None,
             "selected_weight": None,
             "per_gram_display": "—",
@@ -621,6 +772,9 @@ def build_gold(
     selected = options[0]
     return {
         "price_display": selected["price_display"],
+        "sell_display": selected["sell_display"],
+        "buy_display": selected["buy_display"],
+        "buy_damaged_display": selected["buy_damaged_display"],
         "change_pct": selected["change_pct"],
         "selected_weight": selected["weight"],
         "per_gram_display": selected["per_gram_display"],
@@ -723,20 +877,20 @@ def build_ticker_items(
 
 def build_history_chart(cbu_history: dict[str, list[dict[str, Any]]] | None = None) -> dict[str, Any] | None:
     cbu_history = cbu_history or {}
-    labels_raw = sorted(
-        {
-            str(doc.get("date_only") or "")
-            for docs in cbu_history.values()
-            for doc in docs
-            if doc.get("date_only")
-        }
-    )
-    if not labels_raw:
-        return None
-
-    series = []
+    datasets = {}
+    tabs = []
     for currency in HISTORY_CURRENCIES:
         docs = cbu_history.get(currency) or []
+        labels_raw = sorted(
+            {
+                str(doc.get("date_only") or "")
+                for doc in docs
+                if doc.get("date_only")
+            }
+        )
+        if not labels_raw:
+            continue
+
         values_by_date = {
             str(doc.get("date_only") or ""): _extract_doc_rate(doc)
             for doc in docs
@@ -746,81 +900,119 @@ def build_history_chart(cbu_history: dict[str, list[dict[str, Any]]] | None = No
         if not any(value is not None for value in series_values):
             continue
 
-        series.append(
-            {
-                "key": currency,
-                "label": currency,
-                "color": CURRENCY_COLORS.get(currency, "#00e5a0"),
-                "values": series_values,
-            }
-        )
+        tabs.append({"key": currency, "label": currency})
+        datasets[currency] = {
+            "labels": [_format_chart_date(label) or label for label in labels_raw],
+            "series": [
+                {
+                    "key": currency,
+                    "label": currency,
+                    "color": CURRENCY_COLORS.get(currency, "#00e5a0"),
+                    "values": series_values,
+                }
+            ],
+            "meta": f"{_format_date(labels_raw[0]) or labels_raw[0]} - {_format_date(labels_raw[-1]) or labels_raw[-1]}",
+        }
 
-    if not series:
+    if not datasets:
         return None
 
+    selected_key = tabs[0]["key"]
     return {
-        "labels": [_format_date(label) or label for label in labels_raw],
-        "series": series,
+        "tabs": tabs,
+        "datasets": datasets,
+        "selected_key": selected_key,
+        "selected_meta": datasets[selected_key]["meta"],
     }
 
 
 def build_forecast_chart(
     raw: list[dict[str, Any]],
+    cbu_history: dict[str, list[dict[str, Any]]] | None = None,
     prediction_docs: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     prediction_docs = prediction_docs or []
+    cbu_history = cbu_history or {}
     current_cbu_rates = {
         str(doc.get("currency") or "").upper(): _extract_doc_rate(doc)
         for doc in raw
         if str(doc.get("bank_name") or "") == "CBU"
     }
 
-    ordered_predictions = sorted(
-        (
-            doc
-            for doc in prediction_docs
-            if str(doc.get("currency") or "").upper() in FORECAST_CURRENCIES
-        ),
-        key=lambda doc: FORECAST_CURRENCIES.index(str(doc.get("currency") or "").upper()),
-    )
+    prediction_by_currency = {
+        str(doc.get("currency") or "").upper(): doc
+        for doc in prediction_docs
+        if str(doc.get("currency") or "").upper() in FORECAST_CURRENCIES
+    }
 
-    labels = []
-    current_values = []
-    predicted_values = []
-    forecast_date = None
+    datasets = {}
+    tabs = []
+    for currency in FORECAST_CURRENCIES:
+        doc = prediction_by_currency.get(currency)
+        if not doc:
+            continue
 
-    for doc in ordered_predictions:
-        currency = str(doc.get("currency") or "").upper()
         current_rate = current_cbu_rates.get(currency)
         predicted_rate = _to_float(doc.get("predicted_rate"))
         if current_rate is None or predicted_rate is None:
             continue
 
-        labels.append(currency)
-        current_values.append(current_rate)
-        predicted_values.append(predicted_rate)
-        forecast_date = forecast_date or _format_date(str(doc.get("predicted_for_date") or ""))
+        history_docs = cbu_history.get(currency) or []
+        history_dates = [
+            str(history_doc.get("date_only") or "")
+            for history_doc in history_docs
+            if history_doc.get("date_only")
+        ]
+        history_values = [
+            _extract_doc_rate(history_doc)
+            for history_doc in history_docs
+            if history_doc.get("date_only")
+        ]
+        if not history_dates or not any(value is not None for value in history_values):
+            current_label = _format_date(str(doc.get("date_only") or "")) or _("Current")
+            history_dates = [current_label]
+            history_values = [current_rate]
+        else:
+            latest_history_index = max(
+                (index for index, value in enumerate(history_values) if value is not None),
+                default=None,
+            )
+            if latest_history_index is not None:
+                history_values[latest_history_index] = current_rate
 
-    if not labels:
+        predicted_date = _format_date(str(doc.get("predicted_for_date") or "")) or _("Forecast")
+        history_start_date = _format_date(history_dates[0]) or history_dates[0]
+        labels = [(_format_chart_date(value) or value) for value in history_dates] + [(_format_chart_date(str(doc.get("predicted_for_date") or "")) or predicted_date)]
+        tabs.append({"key": currency, "label": currency})
+        datasets[currency] = {
+            "labels": labels,
+            "series": [
+                {
+                    "key": "current",
+                    "label": _("Current CBU rate"),
+                    "color": "#00e5a0",
+                    "values": history_values + [None],
+                },
+                {
+                    "key": "forecast",
+                    "label": _("Model forecast"),
+                    "color": "#f59e0b",
+                    "dasharray": "7 5",
+                    "values": history_values + [predicted_rate],
+                },
+            ],
+            "meta": f"{history_start_date} - {predicted_date}",
+        }
+
+    if not datasets:
         return None
 
+    selected_key = tabs[0]["key"]
     return {
-        "labels": labels,
-        "series": [
-            {
-                "key": "current",
-                "label": _("Current CBU rate"),
-                "color": "#00e5a0",
-                "values": current_values,
-            },
-            {
-                "key": "forecast",
-                "label": _("Model forecast"),
-                "color": "#f59e0b",
-                "values": predicted_values,
-            },
-        ],
-        "forecast_date": forecast_date,
+        "tabs": tabs,
+        "datasets": datasets,
+        "selected_key": selected_key,
+        "forecast_date": datasets[selected_key]["meta"],
     }
 
 
