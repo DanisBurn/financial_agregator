@@ -25,41 +25,52 @@ class TBCBank(BaseBankScraper):
             return None
 
     def parse(self, html):
-        if not html:
-            return None
-
-        target_codes = ['USD', 'EUR']
-        soup = BeautifulSoup(html, 'html.parser')
-        rows = soup.find_all('tr')
-        parsed_by_code = {}
-
-        for row in rows:
-            cells = row.find_all(['td', 'th'])
-            if len(cells) >= 5:
-                text = row.get_text(separator=' ', strip=True).upper()
-
-                for code in target_codes:
-                    if code in text and code not in parsed_by_code:
-                        sell_text = cells[3].get_text(strip=True)
-                        buy_text = cells[4].get_text(strip=True)
-
-                        try:
-                            buy_clean = re.sub(r'[^\d,.]', '', buy_text).replace(',', '.')
-                            sell_clean = re.sub(r'[^\d,.]', '', sell_text).replace(',', '.')
-
-                            parsed_by_code[code] = {
-                                "buy": float(buy_clean),
-                                "sell": float(sell_clean)
-                            }
-                        except ValueError:
-                            pass
-
+        if not html: return None
+        
         results = {}
+        target_codes = ['USD', 'EUR'] # Этот список задает желаемый порядок!
+        
+        # 1. Умный поиск по JS-массиву
         for code in target_codes:
-            if code in parsed_by_code:
-                results[code] = parsed_by_code[code]
-
-        return results if results else None
+            pattern = fr'"{code}"\s*,\s*(?:"UZS"\s*,\s*)?(\d+(?:\.\d+)?)\s*,\s*\d+(?:\.\d+)?\s*,\s*(\d+(?:\.\d+)?)'
+            match = re.search(pattern, html)
+            if match:
+                results[code] = {
+                    "buy": float(match.group(1)),
+                    "sell": float(match.group(2))
+                }
+                
+        # 2. Резервный поиск по таблице (если JS-массив не нашел все валюты)
+        if len(results) < len(target_codes):
+            soup = BeautifulSoup(html, 'html.parser')
+            rows = soup.find_all('tr')
+            
+            for row in rows:
+                cells = row.find_all(['td', 'th'])
+                if len(cells) >= 5:
+                    text = row.get_text(separator=' ', strip=True).upper()
+                    for code in target_codes:
+                        if code in text and code not in results:
+                            sell_text = cells[3].get_text(strip=True)
+                            buy_text = cells[4].get_text(strip=True)
+                            try:
+                                buy_clean = re.sub(r'[^\d,.]', '', buy_text).replace(',', '.')
+                                sell_clean = re.sub(r'[^\d,.]', '', sell_text).replace(',', '.')
+                                results[code] = {
+                                    "buy": float(buy_clean),
+                                    "sell": float(sell_clean)
+                                }
+                            except ValueError:
+                                pass
+                                
+        if results:
+            ordered_results = {}
+            for code in target_codes:
+                if code in results:
+                    ordered_results[code] = results[code]
+            return ordered_results
+            
+        return None
     
 if __name__ == "__main__":
     bank = TBCBank()

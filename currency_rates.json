@@ -1,7 +1,5 @@
 {
-    "timestamp": "2026-04-10T16:46:00.487277",
-    "currency_updated_at": "2026-04-10T16:45:59.838150",
-    "gold_updated_at": "2026-04-10T16:46:00.486120",
+    "timestamp": "2026-04-10T21:02:45.002814",
     "banks": {
         "Agrobank": {
             "USD": {
@@ -153,6 +151,20 @@
                 "sell": 158.0
             }
         },
+        "Hayot Bank": {
+            "USD": {
+                "buy": 12100.0,
+                "sell": 12200.0
+            },
+            "EUR": {
+                "buy": 14000.0,
+                "sell": 14460.0
+            },
+            "RUB": {
+                "buy": 140.0,
+                "sell": 181.0
+            }
+        },
         "InfinBank": {
             "USD": {
                 "buy": 12110.0,
@@ -164,7 +176,7 @@
             },
             "RUB": {
                 "buy": 145.0,
-                "sell": 157.0
+                "sell": 158.0
             }
         },
         "IpakYuliBank": {
@@ -226,7 +238,7 @@
         "NBU": {
             "USD": {
                 "buy": 12110.0,
-                "sell": 12230.0
+                "sell": 12190.0
             },
             "EUR": {
                 "buy": 14090.0,
@@ -262,7 +274,7 @@
             },
             "RUB": {
                 "buy": 90.0,
-                "sell": 157.0
+                "sell": 159.0
             }
         },
         "Poytaxt Bank": {
@@ -334,7 +346,7 @@
         "TuronBank": {
             "USD": {
                 "buy": 12100.0,
-                "sell": 12210.0
+                "sell": 12180.0
             },
             "EUR": {
                 "buy": 13000.0,
@@ -403,31 +415,11 @@
     },
     "predictions": {
         "CBU": {
-            "EUR": {
-                "predicted_for_date": "2026-04-11",
-                "predicted_rate": 14234.7498,
-                "model": "Ridge_alpha=10.0",
-                "model_path": "/home/user/py_project/financial_agregator/prediction/eur_model.pkl",
-                "features_used": {
-                    "lag1": 14241.49,
-                    "lag2": 14241.49,
-                    "diff_lag1_lag2": 0.0,
-                    "ratio_lag1_lag2": 1.0,
-                    "mean_lag1_lag2": 14241.49,
-                    "day_of_week": 5,
-                    "month": 4,
-                    "day_of_month": 11,
-                    "dow_sin": -0.9749279121818236,
-                    "dow_cos": -0.2225209339563146,
-                    "month_sin": 0.8660254037844387,
-                    "month_cos": -0.4999999999999998
-                }
-            },
             "USD": {
                 "predicted_for_date": "2026-04-11",
                 "predicted_rate": 12203.7053,
                 "model": "LinearRegression",
-                "model_path": "/home/user/py_project/financial_agregator/prediction/usd_mode.pkl",
+                "model_path": "/Users/dan/Documents/Codes/Bank Parsers/financial_agregator/prediction/linear_regression_usd_with_features.pkl",
                 "features_used": {
                     "lag1": 12198.28,
                     "lag2": 12198.28,

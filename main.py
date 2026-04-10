@@ -1,7 +1,5 @@
 import json
-import math
 import os
-import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -85,26 +83,12 @@ MONGO_DB_NAME = "banks_data"
 MONGO_COLLECTION_NAME = "currency_rates"
 MONGO_GOLD_COLLECTION_NAME = "gold_rates"
 MONGO_PREDICTIONS_COLLECTION_NAME = "predictions"
-MONGO_CBU_HISTORY_COLLECTION_NAME = "cbu_history"
-PREDICTION_DIRECTORIES = [
-    os.path.join(root_dir, "predict"),
-    os.path.join(root_dir, "prediction"),
-]
-PREDICTION_MODEL_CANDIDATES = {
-    "USD": [
-        "usd_model.pkl",
-        "usd_mode.pkl",
-        "linear_regression_usd_with_features.pkl",
-    ],
-    "EUR": [
-        "eur_model.pkl",
-        "best_eur_model_with_features.pkl",
-    ],
-}
+CBU_MODEL_PATH = os.path.join(
+    root_dir,
+    "prediction",
+    "linear_regression_usd_with_features.pkl",
+)
 DEFAULT_MODEL_FEATURES = ["lag1", "lag2", "day_of_week", "month", "day_of_month"]
-MODEL_BANK_NAME = "CBU"
-CBU_HISTORY_CURRENCIES = ("USD", "EUR", "RUB")
-DEFAULT_CBU_HISTORY_DAYS = 7
 
 
 def build_banks():
@@ -144,12 +128,8 @@ def build_report_path():
     return os.path.join(root_dir, "currency_rates.json")
 
 
-def build_cbu_history_path():
-    return os.path.join(root_dir, "cbu_weekly_history.json")
-
-
-def load_report(file_path=None):
-    file_path = file_path or build_report_path()
+def load_report():
+    file_path = build_report_path()
     if not os.path.exists(file_path):
         return None
 
@@ -167,217 +147,6 @@ def save_report(report):
     return file_path
 
 
-def save_cbu_history_report(report):
-    file_path = build_cbu_history_path()
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=4)
-    return file_path
-
-
-def build_cbu_history_api_url(date_only):
-    return f"https://cbu.uz/ru/arkhiv-kursov-valyut/json/all/{date_only}/"
-
-
-def iter_cbu_history_dates(days=DEFAULT_CBU_HISTORY_DAYS):
-    days = max(int(days or DEFAULT_CBU_HISTORY_DAYS), 1)
-    today = datetime.now().date()
-    for offset in range(days - 1, -1, -1):
-        yield today - timedelta(days=offset)
-
-
-def normalize_cbu_history_payload(raw_items, parser):
-    rates = {}
-    display_date = None
-
-    for item in raw_items or []:
-        currency = str(item.get("Ccy") or "").upper()
-        if currency not in CBU_HISTORY_CURRENCIES or currency in rates:
-            continue
-
-        try:
-            rate = parser._normalize_rate(item)
-        except (AttributeError, TypeError, ValueError):
-            continue
-
-        display_date = display_date or str(item.get("Date") or "")
-        rates[currency] = {
-            "rate": round(rate, 4),
-            "buy": round(rate, 4),
-            "sell": round(rate, 4),
-        }
-
-    return rates, display_date
-
-
-def fetch_json_with_curl(url):
-    completed = subprocess.run(
-        ["curl", "-sS", url],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return json.loads(completed.stdout)
-
-
-def fetch_cbu_history(days=DEFAULT_CBU_HISTORY_DAYS, verbose=True):
-    parser = CBU()
-    history_days = []
-    generated_at = datetime.now(timezone.utc).isoformat()
-
-    try:
-        parser.session.get(parser.main_url, timeout=20)
-    except Exception:
-        pass
-
-    for day in iter_cbu_history_dates(days):
-        date_only = day.isoformat()
-        api_url = build_cbu_history_api_url(date_only)
-
-        try:
-            response = parser.session.get(api_url, timeout=20)
-            response.raise_for_status()
-            raw_items = response.json()
-        except Exception as e:
-            try:
-                raw_items = fetch_json_with_curl(api_url)
-                if verbose:
-                    print(f"[!] История CBU за {date_only} получена через curl fallback")
-            except Exception as curl_error:
-                if verbose:
-                    print(
-                        f"[-] Не удалось получить историю CBU за {date_only}: "
-                        f"{e}; curl fallback: {curl_error}"
-                    )
-                continue
-
-        rates, display_date = normalize_cbu_history_payload(raw_items, parser)
-        if not rates:
-            if verbose:
-                print(f"[-] История CBU за {date_only} не содержит целевых валют")
-            continue
-
-        history_days.append(
-            {
-                "date_only": date_only,
-                "display_date": display_date,
-                "rates": rates,
-            }
-        )
-
-        if verbose:
-            loaded_codes = ", ".join(sorted(rates))
-            print(f"[+] История CBU за {date_only} загружена: {loaded_codes}")
-
-    return {
-        "generated_at": generated_at,
-        "days": history_days,
-        "currencies": list(CBU_HISTORY_CURRENCIES),
-    }
-
-
-def iter_cbu_history_docs(report):
-    generated_at = str(report.get("generated_at") or datetime.now(timezone.utc).isoformat())
-
-    for day in report.get("days") or []:
-        date_only = str(day.get("date_only") or "").strip()
-        if not date_only:
-            continue
-
-        for currency, rate_payload in (day.get("rates") or {}).items():
-            if str(currency or "").upper() not in CBU_HISTORY_CURRENCIES:
-                continue
-
-            try:
-                numeric_rate = extract_numeric_rate(rate_payload)
-            except ValueError:
-                continue
-
-            yield {
-                "timestamp": f"{date_only}T00:00:00",
-                "date_only": date_only,
-                "bank_name": MODEL_BANK_NAME,
-                "currency": str(currency).upper(),
-                "rate": numeric_rate,
-                "buy": numeric_rate,
-                "sell": numeric_rate,
-                "source_generated_at": generated_at,
-                "source_date": day.get("display_date"),
-            }
-
-
-def send_cbu_history_to_mongo(report, verbose=True):
-    if MongoClient is None or UpdateOne is None:
-        if verbose:
-            print("[-] История CBU: отправка в MongoDB пропущена, не установлен pymongo")
-        return {"status": "skipped", "reason": "pymongo_missing"}
-
-    history_docs = list(iter_cbu_history_docs(report))
-    if not history_docs:
-        if verbose:
-            print("[-] История CBU: отправка в MongoDB пропущена, нет данных")
-        return {"status": "skipped", "reason": "no_data"}
-
-    client = None
-    try:
-        client = MongoClient(MONGO_URI)
-        collection = client[MONGO_DB_NAME][MONGO_CBU_HISTORY_COLLECTION_NAME]
-        operations = []
-
-        for doc in history_docs:
-            stored_doc = {
-                **doc,
-                "loaded_at": datetime.now(timezone.utc),
-            }
-            operations.append(
-                UpdateOne(
-                    {
-                        "date_only": doc["date_only"],
-                        "bank_name": doc["bank_name"],
-                        "currency": doc["currency"],
-                    },
-                    {"$set": stored_doc},
-                    upsert=True,
-                )
-            )
-
-        result = collection.bulk_write(operations, ordered=False)
-        summary = {
-            "status": "success",
-            "inserted": result.upserted_count,
-            "updated": result.modified_count,
-        }
-
-        if verbose:
-            print(
-                f"[MongoDB][cbu_history] inserted: {summary['inserted']}, "
-                f"updated: {summary['updated']}"
-            )
-
-        return summary
-    except Exception as e:
-        if verbose:
-            print(f"[-] Ошибка при отправке истории CBU в MongoDB: {e}")
-        return {"status": "error", "reason": str(e)}
-    finally:
-        if client is not None:
-            client.close()
-
-
-def refresh_cbu_history(days=DEFAULT_CBU_HISTORY_DAYS, verbose=True):
-    report = fetch_cbu_history(days=days, verbose=verbose)
-    file_path = save_cbu_history_report(report)
-    mongo_summary = send_cbu_history_to_mongo(report, verbose=verbose)
-
-    if verbose:
-        print(f"[+] История CBU сохранена: {file_path}")
-
-    return {
-        **report,
-        "file_path": file_path,
-        "mongo_summary": mongo_summary,
-    }
-
-
 def extract_numeric_rate(rate_info):
     if not isinstance(rate_info, dict):
         raise ValueError("Данные по курсу должны быть словарем")
@@ -390,46 +159,29 @@ def extract_numeric_rate(rate_info):
     raise ValueError("Не найдено числовое значение курса")
 
 
-def extract_report_rate(report, bank_name, currency_code):
+def extract_cbu_usd_rate(report):
     banks_data = report.get("banks") or {}
-    bank_data = banks_data.get(bank_name) or {}
-    currency_data = bank_data.get(currency_code)
+    cbu_data = banks_data.get("CBU") or {}
+    usd_data = cbu_data.get("USD")
 
-    if not currency_data:
-        raise ValueError(f"В final_report нет данных {bank_name}/{currency_code}")
+    if not usd_data:
+        raise ValueError("В final_report нет данных CBU/USD")
 
-    return extract_numeric_rate(currency_data)
-
-
-def find_prediction_model_path(currency_code):
-    for directory in PREDICTION_DIRECTORIES:
-        for file_name in PREDICTION_MODEL_CANDIDATES.get(currency_code, []):
-            candidate_path = os.path.join(directory, file_name)
-            if os.path.exists(candidate_path):
-                return candidate_path
-
-    raise FileNotFoundError(
-        f"Файл модели для {currency_code} не найден. Проверены пути: "
-        + ", ".join(
-            os.path.join(directory, file_name)
-            for directory in PREDICTION_DIRECTORIES
-            for file_name in PREDICTION_MODEL_CANDIDATES.get(currency_code, [])
-        )
-    )
+    return extract_numeric_rate(usd_data)
 
 
-def load_prediction_model(model_path):
+def load_prediction_model():
     if joblib is None:
         raise ImportError("Не установлен joblib")
 
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Файл модели не найден: {model_path}")
+    if not os.path.exists(CBU_MODEL_PATH):
+        raise FileNotFoundError(f"Файл модели не найден: {CBU_MODEL_PATH}")
 
-    saved_obj = joblib.load(model_path)
+    saved_obj = joblib.load(CBU_MODEL_PATH)
 
     if hasattr(saved_obj, "predict"):
         feature_names = list(getattr(saved_obj, "feature_names_in_", [])) or DEFAULT_MODEL_FEATURES
-        return saved_obj, feature_names, type(saved_obj).__name__
+        return saved_obj, feature_names
 
     if isinstance(saved_obj, dict) and "model" in saved_obj:
         model = saved_obj["model"]
@@ -438,52 +190,33 @@ def load_prediction_model(model_path):
             or getattr(model, "feature_names_in_", [])
             or DEFAULT_MODEL_FEATURES
         )
-        model_name = saved_obj.get("model_name") or type(model).__name__
-        return model, feature_names, model_name
+        return model, feature_names
 
     raise ValueError("Не удалось извлечь модель из pkl-файла")
 
 
-def build_date_only(timestamp):
-    try:
-        return datetime.fromisoformat(timestamp).date().isoformat()
-    except (TypeError, ValueError):
-        return datetime.now().date().isoformat()
-
-
-def build_prediction_feature_values(current_rate, previous_rate, predicted_dt):
-    ratio = current_rate / previous_rate if previous_rate else 1.0
-
-    return {
-        "lag1": current_rate,
-        "lag2": previous_rate,
-        "diff_lag1_lag2": current_rate - previous_rate,
-        "ratio_lag1_lag2": ratio,
-        "mean_lag1_lag2": (current_rate + previous_rate) / 2,
-        "day_of_week": predicted_dt.weekday(),
-        "month": predicted_dt.month,
-        "day_of_month": predicted_dt.day,
-        "dow_sin": math.sin(2 * math.pi * predicted_dt.weekday() / 7),
-        "dow_cos": math.cos(2 * math.pi * predicted_dt.weekday() / 7),
-        "month_sin": math.sin(2 * math.pi * predicted_dt.month / 12),
-        "month_cos": math.cos(2 * math.pi * predicted_dt.month / 12),
-    }
-
-
-def build_prediction_payload(final_report, bank_name, currency_code, previous_report=None):
-    current_rate = extract_report_rate(final_report, bank_name, currency_code)
+def build_prediction_payload(final_report, previous_report=None):
+    current_rate = extract_cbu_usd_rate(final_report)
 
     previous_rate = current_rate
     if previous_report:
         try:
-            previous_rate = extract_report_rate(previous_report, bank_name, currency_code)
+            previous_rate = extract_cbu_usd_rate(previous_report)
         except ValueError:
             previous_rate = current_rate
 
     base_timestamp = final_report.get("timestamp") or datetime.now().isoformat()
     base_dt = datetime.fromisoformat(base_timestamp)
     predicted_dt = base_dt + timedelta(days=1)
-    feature_values = build_prediction_feature_values(current_rate, previous_rate, predicted_dt)
+
+    feature_values = {
+        "lag1": current_rate,
+        "lag2": previous_rate,
+        "day_of_week": predicted_dt.weekday(),
+        "month": predicted_dt.month,
+        "day_of_month": predicted_dt.day,
+    }
+
     return predicted_dt, feature_values
 
 
@@ -499,14 +232,11 @@ def build_model_input(feature_names, feature_values):
     return [[ordered_features[feature_name] for feature_name in feature_names]]
 
 
-def add_prediction_for_currency(report, bank_name, currency_code, previous_report=None, verbose=True):
+def add_cbu_prediction(report, previous_report=None, verbose=True):
     try:
-        model_path = find_prediction_model_path(currency_code)
-        model, feature_names, model_name = load_prediction_model(model_path)
+        model, feature_names = load_prediction_model()
         predicted_dt, feature_values = build_prediction_payload(
             final_report=report,
-            bank_name=bank_name,
-            currency_code=currency_code,
             previous_report=previous_report,
         )
 
@@ -525,12 +255,12 @@ def add_prediction_for_currency(report, bank_name, currency_code, previous_repor
         predicted_rate = float(model.predict(model_input)[0])
 
         report.setdefault("predictions", {})
-        report["predictions"].setdefault(bank_name, {})
-        report["predictions"][bank_name][currency_code] = {
+        report["predictions"].setdefault("CBU", {})
+        report["predictions"]["CBU"]["USD"] = {
             "predicted_for_date": predicted_dt.date().isoformat(),
             "predicted_rate": round(predicted_rate, 4),
-            "model": model_name,
-            "model_path": model_path,
+            "model": type(model).__name__,
+            "model_path": CBU_MODEL_PATH,
             "features_used": {
                 feature_name: feature_values[feature_name]
                 for feature_name in feature_names
@@ -538,39 +268,12 @@ def add_prediction_for_currency(report, bank_name, currency_code, previous_repor
         }
 
         if verbose:
-            print(f"[+] Прогноз для {bank_name}/{currency_code} успешно добавлен в final_report")
+            print("[+] Прогноз для CBU/USD успешно добавлен в final_report")
     except Exception as e:
         if verbose:
-            print(f"[-] Не удалось добавить прогноз для {bank_name}/{currency_code}: {e}")
+            print(f"[-] Не удалось добавить прогноз CBU/USD: {e}")
 
     return report
-
-
-def add_predictions_to_report(report, previous_report=None, verbose=True):
-    for currency_code in sorted(PREDICTION_MODEL_CANDIDATES):
-        report = add_prediction_for_currency(
-            report,
-            bank_name=MODEL_BANK_NAME,
-            currency_code=currency_code,
-            previous_report=previous_report,
-            verbose=verbose,
-        )
-
-    return report
-
-
-def add_predictions_to_saved_report(file_path, previous_report=None, verbose=True):
-    report = load_report(file_path)
-    if report is None:
-        raise ValueError(f"Не удалось загрузить JSON-отчет: {file_path}")
-
-    updated_report = add_predictions_to_report(
-        report,
-        previous_report=previous_report,
-        verbose=verbose,
-    )
-    save_report(updated_report)
-    return updated_report
 
 
 def send_to_mongo(report, verbose=True):
@@ -584,7 +287,7 @@ def send_to_mongo(report, verbose=True):
         }
 
     timestamp = report.get("currency_updated_at") or report.get("timestamp") or datetime.now().isoformat()
-    date_only = build_date_only(timestamp)
+    date_only = timestamp[:10]
     client = None
 
     try:
@@ -626,7 +329,7 @@ def send_to_mongo(report, verbose=True):
                 bank_operations.append(
                     UpdateOne(
                         {
-                            "date_only": date_only,
+                            "timestamp": timestamp,
                             "bank_name": bank_name,
                             "currency": currency,
                         },
@@ -660,7 +363,7 @@ def send_to_mongo(report, verbose=True):
             gold_operations.append(
                 UpdateOne(
                     {
-                        "date_only": date_only,
+                        "timestamp": timestamp,
                         "weight": weight,
                     },
                     {"$set": doc},
@@ -695,7 +398,7 @@ def send_to_mongo(report, verbose=True):
                 prediction_operations.append(
                     UpdateOne(
                         {
-                            "date_only": date_only,
+                            "timestamp": timestamp,
                             "bank_name": bank_name,
                             "currency": currency,
                         },
@@ -767,9 +470,6 @@ def refresh_report(include_gold=True, verbose=True):
             if verbose:
                 print(f"[-] Ошибка в {bank.bank_name}: {e}")
 
-    if final_report["banks"]:
-        final_report["currency_updated_at"] = final_report["timestamp"]
-
     if include_gold:
         gold = CbuGold()
         if verbose:
@@ -788,15 +488,13 @@ def refresh_report(include_gold=True, verbose=True):
             if verbose:
                 print(f"[-] Ошибка в {gold.bank_name}: {e}")
 
-        if final_report["gold"]:
-            final_report["gold_updated_at"] = final_report["timestamp"]
-
-    file_path = save_report(final_report)
-    return add_predictions_to_saved_report(
-        file_path,
+    final_report = add_cbu_prediction(
+        final_report,
         previous_report=previous_report,
         verbose=verbose,
     )
+    save_report(final_report)
+    return final_report
 
 
 def main():
@@ -828,21 +526,6 @@ def main():
         print(f"Готово: в MongoDB отправлены разделы: {', '.join(successful_sections)}")
     else:
         print("[-] Данные не были отправлены в MongoDB")
-
-    print("\nСинхронизирую недельную историю CBU...")
-    history_result = refresh_cbu_history(verbose=True)
-    history_summary = history_result.get("mongo_summary", {})
-
-    if history_summary.get("status") == "success":
-        print(
-            "[+] История CBU отправлена в MongoDB: "
-            f"inserted={history_summary.get('inserted', 0)}, "
-            f"updated={history_summary.get('updated', 0)}"
-        )
-    elif history_summary.get("status") == "error":
-        print(f"[-] Ошибка отправки истории CBU: {history_summary.get('reason')}")
-    else:
-        print("[-] История CBU не была отправлена в MongoDB")
 
 
 if __name__ == "__main__":
