@@ -1,4 +1,4 @@
-# Uzbek translations for ProjectZoloto (Latin script)
+# Uzbek translations for ProjectZoloto
 msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -6,62 +6,158 @@ msgstr ""
 msgid "ProjectZoloto"
 msgstr "ProjectZoloto"
 
-msgid "Project"
-msgstr "Loyiha"
+msgid "Live rates"
+msgstr "Jonli kurslar"
 
-msgid "Rates"
-msgstr "Kurslar"
+msgid "LIVE RATES"
+msgstr "JONLI KURSLAR"
 
-msgid "Language"
-msgstr "Til"
+msgid "Theme"
+msgstr "Mavzu"
 
-msgid "English"
-msgstr "Inglizcha"
+msgid "Data updates every 15 minutes"
+msgstr "Ma’lumotlar har 15 daqiqada yangilanadi"
 
-msgid "Russian"
-msgstr "Ruscha"
-
-msgid "Uzbek"
-msgstr "O‘zbekcha"
-
-msgid "Uzbekistan banks & gold — aggregate view. Data wiring is your next step."
-msgstr "O‘zbekiston banklari va oltin — yig‘ma ko‘rinish. Ma’lumotlarni keyingi qadamda ulang."
+msgid "Central Bank & commercial bank data"
+msgstr "Markaziy bank va tijorat banklari ma’lumotlari"
 
 msgid "Best rates"
 msgstr "Eng yaxshi kurslar"
 
-msgid "Best buy & sell rates"
-msgstr "Eng yaxshi sotib olish va sotish kurslari"
+msgid "CBU"
+msgstr "CBU"
 
-msgid "Compare currencies and gold across Uzbekistan banks. Connect your JSON parsers in <code>rates/services/home_page.py</code> and map results here."
-msgstr "O‘zbekiston banklari bo‘yicha valyuta va oltinni solishtiring. JSON-parserlaringizni <code>rates/services/home_page.py</code> ichida ulang va natijani shu yerda chiqaring."
+msgid "Best buy"
+msgstr "Eng yaxshi sotib olish"
 
-msgid "Overview"
-msgstr "Umumiy ko‘rinish"
-
-msgid "Raw bank payloads loaded: %(n)s"
-msgstr "Bankdan yuklangan xom paketlar: %(n)s"
-
-msgid "Currencies"
-msgstr "Valyutalar"
-
-msgid "No currency rows yet — implement aggregation."
-msgstr "Valyuta qatorlari hali yo‘q — agregatsiyani qo‘shing."
+msgid "Best sell"
+msgstr "Eng yaxshi sotish"
 
 msgid "Gold"
 msgstr "Oltin"
 
-msgid "No gold rows yet — implement aggregation."
-msgstr "Oltin qatorlari hali yo‘q — agregatsiyani qo‘shing."
+msgid "Central Bank official rate"
+msgstr "Markaziy bankning rasmiy kursi"
 
-msgid "Charts"
-msgstr "Grafiklar"
+msgid "Gold rates by weight"
+msgstr "Oltin narxlari og‘irlik bo‘yicha"
 
-msgid "Chart data is ready — plug in Chart.js or your library in extra_js."
-msgstr "Grafik ma’lumotlari tayyor — Chart.js yoki kutubxonangizni extra_js ichida ulang."
+msgid "Official bullion prices with selectable bar weight"
+msgstr "Tanlanadigan quyma og‘irligi bo‘yicha rasmiy narxlar"
 
-msgid "Chart series empty — fill build_chart_series()."
-msgstr "Grafik qatori bo‘sh — build_chart_series() ni to‘ldiring."
+msgid "Select weight"
+msgstr "Vaznni tanlang"
+
+msgid "Per gram"
+msgstr "Bir gramm uchun"
+
+msgid "Updated"
+msgstr "Yangilangan"
+
+msgid "UZS / selected weight"
+msgstr "UZS / tanlangan og‘irlik"
+
+msgid "UZS / %(weight)s"
+msgstr "UZS / %(weight)s"
+
+msgid "CBU history"
+msgstr "CBU tarixi"
+
+msgid "Official daily rates for USD, EUR and RUB from the database"
+msgstr "Bazadagi USD, EUR va RUB bo‘yicha rasmiy kunlik kurslar"
+
+msgid "CBU history will appear when archived rates exist in the database"
+msgstr "Bazada arxiv kurslar bo‘lganda CBU tarixi ko‘rinadi"
 
 msgid "Forecast"
 msgstr "Prognoz"
+
+msgid "Current CBU rates against model forecast"
+msgstr "Joriy CBU kurslari va model prognozi"
+
+msgid "Forecast will appear when model output exists in the database"
+msgstr "Bazada model natijasi bo‘lganda prognoz ko‘rinadi"
+
+msgid "Commercial banks"
+msgstr "Tijorat banklari"
+
+msgid "Available today"
+msgstr "Bugun mavjud"
+
+msgid "Highest buy for individuals"
+msgstr "Jismoniy shaxslar uchun eng yuqori sotib olish"
+
+msgid "Lowest sell for individuals"
+msgstr "Jismoniy shaxslar uchun eng past sotish"
+
+msgid "Gold selected weight"
+msgstr "Tanlangan vazndagi oltin"
+
+msgid "Bank rates"
+msgstr "Bank kurslari"
+
+msgid "Sort by"
+msgstr "Saralash"
+
+msgid "Alphabetical"
+msgstr "Alifbo bo‘yicha"
+
+msgid "Sell ascending"
+msgstr "Sotish o‘sish bo‘yicha"
+
+msgid "Sell descending"
+msgstr "Sotish kamayish bo‘yicha"
+
+msgid "Buy ascending"
+msgstr "Sotib olish o‘sish bo‘yicha"
+
+msgid "Buy descending"
+msgstr "Sotib olish kamayish bo‘yicha"
+
+msgid "Search bank..."
+msgstr "Bankni qidiring..."
+
+msgid "Reference"
+msgstr "Etalon"
+
+msgid "Buy"
+msgstr "Sotib olish"
+
+msgid "Official reference rate"
+msgstr "Rasmiy ma’lumot kursi"
+
+msgid "Sell"
+msgstr "Sotish"
+
+msgid "Spread"
+msgstr "Spred"
+
+msgid "No data"
+msgstr "Ma’lumot yo‘q"
+
+msgid "Database has no rates for the selected currency yet"
+msgstr "Bazada tanlangan valyuta bo‘yicha kurslar hali yo‘q"
+
+msgid "Rate comparison"
+msgstr "Kurslarni solishtirish"
+
+msgid "For"
+msgstr "Uchun"
+
+msgid "Bank"
+msgstr "Bank"
+
+msgid "Reference rate"
+msgstr "Ma’lumot kursi"
+
+msgid "Central bank"
+msgstr "Markaziy bank"
+
+msgid "Commercial bank"
+msgstr "Tijorat banki"
+
+msgid "Current CBU rate"
+msgstr "Joriy CBU kursi"
+
+msgid "Model forecast"
+msgstr "Model prognozi"

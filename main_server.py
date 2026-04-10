@@ -6,6 +6,8 @@ import tempfile
 import time
 from datetime import datetime, timedelta
 
+from main import add_predictions_to_saved_report, send_to_mongo
+
 root_dir = os.path.dirname(os.path.abspath(__file__))
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
@@ -198,6 +200,7 @@ def refresh_gold_rates(report, verbose=True):
 
 
 def refresh_report_server(verbose=True):
+    previous_report = load_report()
     report = build_server_report()
 
     currency_updated = refresh_currency_rates(report, verbose=verbose)
@@ -205,6 +208,28 @@ def refresh_report_server(verbose=True):
 
     report["timestamp"] = datetime.now().isoformat()
     file_path = save_report_atomic(report)
+    mongo_report = {
+        "timestamp": report["timestamp"],
+        "banks": {},
+        "gold": {},
+        "predictions": {},
+    }
+
+    if currency_updated:
+        report = add_predictions_to_saved_report(
+            file_path,
+            previous_report=previous_report,
+            verbose=verbose,
+        )
+        mongo_report["banks"] = report.get("banks", {})
+        mongo_report["predictions"] = report.get("predictions", {})
+        mongo_report["currency_updated_at"] = report.get("currency_updated_at")
+
+    if gold_updated:
+        mongo_report["gold"] = report.get("gold", {})
+        mongo_report["gold_updated_at"] = report.get("gold_updated_at")
+
+    mongo_summary = send_to_mongo(mongo_report, verbose=verbose)
 
     if verbose:
         print()
@@ -213,6 +238,14 @@ def refresh_report_server(verbose=True):
         print(f"[+] Золото обновлено: {'да' if gold_updated else 'нет'}")
         print(f"[+] Время обновления валют: {report.get('currency_updated_at')}")
         print(f"[+] Время обновления золота: {report.get('gold_updated_at')}")
+        print(
+            "[+] MongoDB: "
+            + ", ".join(
+                section_name
+                for section_name, section_summary in mongo_summary.items()
+                if section_summary.get("status") == "success"
+            )
+        )
 
     return report
 

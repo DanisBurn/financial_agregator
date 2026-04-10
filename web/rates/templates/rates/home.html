@@ -6,31 +6,54 @@
 {% block ticker %}
   {% if ticker_items %}
     {% for item in ticker_items %}
-      <span class="tick-item">
+      <span class="tick-item tick-item--{{ item.kind }}">
+        <span class="tick-pill">
+          {% if item.kind == 'cbu' %}
+            {% trans "CBU" %}
+          {% elif item.kind == 'best-buy' %}
+            {% trans "Best buy" %}
+          {% elif item.kind == 'best-sell' %}
+            {% trans "Best sell" %}
+          {% else %}
+            {% trans "Gold" %}
+          {% endif %}
+        </span>
         <span>{{ item.flag }}</span>
         <span class="tick-name">{{ item.code }}</span>
+        <span class="tick-meta">{{ item.bank }}</span>
         <span class="tick-val">{{ item.value }}</span>
         {% if item.dir == 'up' %}
           <span class="tick-up">▲</span>
         {% elif item.dir == 'down' %}
           <span class="tick-down">▼</span>
         {% else %}
-          <span style="color:var(--muted)">—</span>
+          <span class="tick-flat">—</span>
         {% endif %}
       </span>
     {% endfor %}
-    {# repeat once more for smooth CSS ticker loop #}
     {% for item in ticker_items %}
-      <span class="tick-item">
+      <span class="tick-item tick-item--{{ item.kind }}">
+        <span class="tick-pill">
+          {% if item.kind == 'cbu' %}
+            {% trans "CBU" %}
+          {% elif item.kind == 'best-buy' %}
+            {% trans "Best buy" %}
+          {% elif item.kind == 'best-sell' %}
+            {% trans "Best sell" %}
+          {% else %}
+            {% trans "Gold" %}
+          {% endif %}
+        </span>
         <span>{{ item.flag }}</span>
         <span class="tick-name">{{ item.code }}</span>
+        <span class="tick-meta">{{ item.bank }}</span>
         <span class="tick-val">{{ item.value }}</span>
         {% if item.dir == 'up' %}
           <span class="tick-up">▲</span>
         {% elif item.dir == 'down' %}
           <span class="tick-down">▼</span>
         {% else %}
-          <span style="color:var(--muted)">—</span>
+          <span class="tick-flat">—</span>
         {% endif %}
       </span>
     {% endfor %}
@@ -42,38 +65,97 @@
     <div class="gold-icon">🥇</div>
     <div>
       <div class="gold-label">{% trans "Central Bank official rate" %}</div>
-      <div class="gold-title">{% trans "GOLD (XAU) / UZS" %}</div>
-      <div class="gold-subtitle">{% trans "Central Bank rate · Troy ounce" %}</div>
+      <div class="gold-title">{% trans "Gold rates by weight" %}</div>
+      <div class="gold-subtitle">{% trans "Official bullion prices with selectable bar weight" %}</div>
+    </div>
+    <div class="gold-controls">
+      <div class="gold-weights-label">{% trans "Select weight" %}</div>
+      <div class="gold-weights" id="gold-weights">
+        {% for option in gold.options %}
+          <button
+            class="gold-weight-btn {% if option.weight == gold.selected_weight %}active{% endif %}"
+            type="button"
+            data-gold-weight="{{ option.weight }}"
+          >
+            {{ option.weight }}
+          </button>
+        {% endfor %}
+      </div>
+      <div class="gold-meta">
+        <span>{% trans "Per gram" %}: <strong data-gold-per-gram>{{ gold.per_gram_display|default:"—" }}</strong></span>
+        <span>{% trans "Updated" %}: {{ aggregated.as_of|default:"—" }}</span>
+      </div>
     </div>
     <div class="gold-price-block">
-      <div class="gold-price">{{ gold.price_display|default:"—" }}</div>
-      <div class="gold-unit">{% trans "UZS / 1 gram" %}</div>
+      <div class="gold-price" data-gold-price>{{ gold.price_display|default:"—" }}</div>
+      <div class="gold-unit" data-gold-unit>
+        {% if gold.selected_weight %}
+          {% blocktrans with weight=gold.selected_weight %}UZS / {{ weight }}{% endblocktrans %}
+        {% else %}
+          {% trans "UZS / selected weight" %}
+        {% endif %}
+      </div>
+      <div class="gold-change" data-gold-change>
+        {% if gold.change_pct %}
+          {% if gold.change_pct > 0 %}
+            <span class="up-text">▲ +{{ gold.change_pct }}%</span>
+          {% elif gold.change_pct < 0 %}
+            <span class="down-text">▼ {{ gold.change_pct }}%</span>
+          {% endif %}
+        {% else %}
+          <span class="tick-flat">— 0%</span>
+        {% endif %}
+      </div>
     </div>
-    <div style="text-align:right; color:var(--muted); font-size:0.8rem;">
-      {% if aggregated.as_of %}{{ aggregated.as_of }}{% endif %}
+  </div>
+
+  <div class="charts-row charts-row--top">
+    <div class="chart-card fade-in">
+      <div class="chart-head">
+        <div>
+          <div class="chart-title">{% trans "CBU history" %}</div>
+          <div class="chart-subtitle">{% trans "Official daily rates for USD, EUR and RUB from the database" %}</div>
+        </div>
+        <div class="chart-meta">{{ aggregated.as_of|default:"—" }}</div>
+      </div>
+      <div class="chart-frame chart-frame--interactive" id="chart-history">
+        <div class="chart-empty">{% trans "CBU history will appear when archived rates exist in the database" %}</div>
+      </div>
+    </div>
+    <div class="chart-card fade-in">
+      <div class="chart-head">
+        <div>
+          <div class="chart-title">{% trans "Forecast" %}</div>
+          <div class="chart-subtitle">{% trans "Current CBU rates against model forecast" %}</div>
+        </div>
+        <div class="chart-meta">{{ forecast_chart.forecast_date|default:"—" }}</div>
+      </div>
+      <div class="chart-frame chart-frame--interactive" id="chart-forecast">
+        <div class="chart-empty">{% trans "Forecast will appear when model output exists in the database" %}</div>
+      </div>
     </div>
   </div>
 
   <div class="stats-row">
     <div class="stat-card fade-in">
-      <div class="stat-label">{% trans "Banks count" %}</div>
+      <div class="stat-label">{% trans "Commercial banks" %}</div>
       <div class="stat-val stat-accent">{{ stats.bank_count|default:0 }}</div>
-      <div class="stat-sub">{% trans "Data available" %}</div>
+      <div class="stat-sub">{% trans "Available today" %}</div>
     </div>
     <div class="stat-card fade-in">
-      <div class="stat-label">{% trans "Highest buy (selected)" %}</div>
+      <div class="stat-label">{% trans "Highest buy for individuals" %}</div>
       <div class="stat-val">{{ stats.top_buy_rate|default:"—" }}</div>
       <div class="stat-sub">{{ stats.top_buy_bank|default:"—" }}</div>
     </div>
     <div class="stat-card fade-in">
-      <div class="stat-label">{% trans "Lowest sell (selected)" %}</div>
+      <div class="stat-label">{% trans "Lowest sell for individuals" %}</div>
       <div class="stat-val">{{ stats.low_sell_rate|default:"—" }}</div>
       <div class="stat-sub">{{ stats.low_sell_bank|default:"—" }}</div>
     </div>
     <div class="stat-card fade-in">
-      <div class="stat-label">{% trans "Gold (1 g)" %}</div>
-      <div class="stat-val stat-gold">{{ gold.price_display|default:"—" }}</div>
-      <div class="stat-sub">{% trans "sum" %}{% if gold.change_pct %} {{ gold.change_pct }}%{% endif %}</div>
+      <div class="stat-label">{% trans "Gold selected weight" %}</div>
+      <div class="stat-val stat-gold" data-gold-stat-price>{{ gold.price_display|default:"—" }}</div>
+      <div class="stat-sub" data-gold-stat-weight>{{ gold.selected_weight|default:"—" }}</div>
     </div>
   </div>
 
@@ -82,9 +164,11 @@
     <div style="display:flex;gap:8px;align-items:center;">
       <span style="font-size:0.76rem;color:var(--muted);">{% trans "Sort by" %}:</span>
       <select class="sort-sel" id="sort-select">
-        <option value="name">{% trans "By name" %}</option>
-        <option value="buy-desc">{% trans "Buy ↓" %}</option>
-        <option value="sell-asc">{% trans "Sell ↑" %}</option>
+        <option value="name-asc">{% trans "Alphabetical" %}</option>
+        <option value="sell-asc">{% trans "Sell ascending" %}</option>
+        <option value="sell-desc">{% trans "Sell descending" %}</option>
+        <option value="buy-asc">{% trans "Buy ascending" %}</option>
+        <option value="buy-desc">{% trans "Buy descending" %}</option>
       </select>
     </div>
   </div>
@@ -102,12 +186,15 @@
 
   <div class="bank-grid" id="bank-grid">
     {% for bank in banks %}
-      <div class="bank-card fade-in"
-           data-bank-card="1"
-           data-bank-name="{{ bank.name }}"
-           data-buy="{{ bank.buy }}"
-           data-sell="{{ bank.sell }}"
-           style="--accent-card:{{ bank.color }};animation-delay:{{ forloop.counter0|add:1 }}0ms">
+      <div
+        class="bank-card fade-in {% if bank.is_reference %}bank-card--reference{% endif %}"
+        data-bank-card="1"
+        data-bank-name="{{ bank.name }}"
+        data-buy="{{ bank.buy|default_if_none:0 }}"
+        data-sell="{{ bank.sell|default_if_none:0 }}"
+        data-is-reference="{% if bank.is_reference %}1{% else %}0{% endif %}"
+        style="--accent-card:{{ bank.color }};animation-delay:{{ forloop.counter0|add:1 }}0ms"
+      >
         <div class="bank-head">
           <div class="bank-info">
             <div class="bank-logo" style="background:{{ bank.bg }};color:{{ bank.color }}">{{ bank.abbr }}</div>
@@ -116,29 +203,43 @@
               <div class="bank-type">{{ bank.type }}</div>
             </div>
           </div>
-          {% if bank.is_best_buy %}
-            <span class="best-badge best-buy">🏆 {% trans "Best" %}</span>
+          {% if bank.is_reference %}
+            <span class="best-badge ref-badge">{% trans "Reference" %}</span>
+          {% elif bank.is_best_buy %}
+            <span class="best-badge best-buy">🏆 {% trans "Best buy" %}</span>
           {% endif %}
         </div>
         <div class="rates-row">
           <div class="rate-box">
             <div class="rate-box-label">{% trans "Buy" %}</div>
             <div class="rate-box-val buy">{{ bank.buy_display }}</div>
-            <div class="rate-box-sub">UZS / 1 {{ current_currency }}</div>
+            <div class="rate-box-sub">
+              {% if bank.is_reference %}
+                {% trans "Official reference rate" %}
+              {% else %}
+                UZS / 1 {{ current_currency }}
+              {% endif %}
+            </div>
             <div class="rate-box-change">
               {% if bank.change_pct > 0 %}
                 <span class="up-text">▲ +{{ bank.change_pct }}%</span>
               {% elif bank.change_pct < 0 %}
                 <span class="down-text">▼ {{ bank.change_pct }}%</span>
               {% else %}
-                <span style="color:var(--muted)">— 0%</span>
+                <span class="tick-flat">— 0%</span>
               {% endif %}
             </div>
           </div>
           <div class="rate-box">
             <div class="rate-box-label">{% trans "Sell" %}</div>
             <div class="rate-box-val sell">{{ bank.sell_display }}</div>
-            <div class="rate-box-sub">UZS / 1 {{ current_currency }}</div>
+            <div class="rate-box-sub">
+              {% if bank.is_reference %}
+                {% trans "Official reference rate" %}
+              {% else %}
+                UZS / 1 {{ current_currency }}
+              {% endif %}
+            </div>
             <div class="rate-box-change">{% trans "Spread" %}: <strong style="color:var(--muted)">{{ bank.spread_display }}</strong></div>
           </div>
         </div>
@@ -146,7 +247,7 @@
     {% empty %}
       <div class="chart-card">
         <div class="chart-title">{% trans "No data" %}</div>
-        <div class="chart-frame">{% trans "Connect parsers in rates/services/home_page.py" %}</div>
+        <div class="chart-frame">{% trans "Database has no rates for the selected currency yet" %}</div>
       </div>
     {% endfor %}
   </div>
@@ -172,7 +273,12 @@
               <td>
                 <div class="bank-cell">
                   <div class="mini-logo" style="background:{{ row.bg }};color:{{ row.color }}">{{ row.abbr }}</div>
-                  <div>{{ row.name }}</div>
+                  <div>
+                    <div>{{ row.name }}</div>
+                    {% if row.is_reference %}
+                      <div class="table-note">{% trans "Reference rate" %}</div>
+                    {% endif %}
+                  </div>
                 </div>
               </td>
               <td class="rate-cell buy">{{ row.buy_display }}</td>
@@ -185,20 +291,7 @@
     </div>
   </div>
 
-  <div class="charts-row">
-    <div class="chart-card">
-      <div class="chart-title">{% trans "History chart" %} ({{ current_currency }})</div>
-      <div class="chart-frame" id="chart-history">{% trans "Chart placeholder — connect Chart.js / ECharts here" %}</div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">{% trans "Forecast" %}</div>
-      <div class="chart-frame" id="chart-forecast">
-        {% if forecast %}
-          {{ forecast }}
-        {% else %}
-          {% trans "Forecast placeholder — connect your model output" %}
-        {% endif %}
-      </div>
-    </div>
-  </div>
+  {{ gold|json_script:"gold-data" }}
+  {{ history_chart|json_script:"history-chart-data" }}
+  {{ forecast_chart|json_script:"forecast-chart-data" }}
 {% endblock %}

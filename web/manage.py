@@ -3,6 +3,8 @@
 import os
 import sys
 
+DEFAULT_RUNSERVER_ADDR = '127.0.0.1:8888'
+
 
 def main():
     """Run administrative tasks."""
@@ -15,6 +17,12 @@ def main():
             "available on your PYTHONPATH environment variable? Did you "
             "forget to activate a virtual environment?"
         ) from exc
+
+    if len(sys.argv) >= 2 and sys.argv[1] == 'runserver':
+        has_explicit_address = any(':' in arg for arg in sys.argv[2:])
+        if not has_explicit_address:
+            sys.argv.append(DEFAULT_RUNSERVER_ADDR)
+
     execute_from_command_line(sys.argv)
 
 

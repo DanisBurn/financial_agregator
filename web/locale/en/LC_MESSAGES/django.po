@@ -1,4 +1,4 @@
-# English (source) — helps tools; Django uses msgid when msgstr matches.
+# English translations for ProjectZoloto
 msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -6,62 +6,158 @@ msgstr ""
 msgid "ProjectZoloto"
 msgstr "ProjectZoloto"
 
-msgid "Project"
-msgstr "Project"
+msgid "Live rates"
+msgstr "Live rates"
 
-msgid "Rates"
-msgstr "Rates"
+msgid "LIVE RATES"
+msgstr "LIVE RATES"
 
-msgid "Language"
-msgstr "Language"
+msgid "Theme"
+msgstr "Theme"
 
-msgid "English"
-msgstr "English"
+msgid "Data updates every 15 minutes"
+msgstr "Data updates every 15 minutes"
 
-msgid "Russian"
-msgstr "Russian"
-
-msgid "Uzbek"
-msgstr "Uzbek"
-
-msgid "Uzbekistan banks & gold — aggregate view. Data wiring is your next step."
-msgstr "Uzbekistan banks & gold — aggregate view. Data wiring is your next step."
+msgid "Central Bank & commercial bank data"
+msgstr "Central Bank & commercial bank data"
 
 msgid "Best rates"
 msgstr "Best rates"
 
-msgid "Best buy & sell rates"
-msgstr "Best buy & sell rates"
+msgid "CBU"
+msgstr "CBU"
 
-msgid "Compare currencies and gold across Uzbekistan banks. Connect your JSON parsers in <code>rates/services/home_page.py</code> and map results here."
-msgstr "Compare currencies and gold across Uzbekistan banks. Connect your JSON parsers in <code>rates/services/home_page.py</code> and map results here."
+msgid "Best buy"
+msgstr "Best buy"
 
-msgid "Overview"
-msgstr "Overview"
-
-msgid "Raw bank payloads loaded: %(n)s"
-msgstr "Raw bank payloads loaded: %(n)s"
-
-msgid "Currencies"
-msgstr "Currencies"
-
-msgid "No currency rows yet — implement aggregation."
-msgstr "No currency rows yet — implement aggregation."
+msgid "Best sell"
+msgstr "Best sell"
 
 msgid "Gold"
 msgstr "Gold"
 
-msgid "No gold rows yet — implement aggregation."
-msgstr "No gold rows yet — implement aggregation."
+msgid "Central Bank official rate"
+msgstr "Central Bank official rate"
 
-msgid "Charts"
-msgstr "Charts"
+msgid "Gold rates by weight"
+msgstr "Gold rates by weight"
 
-msgid "Chart data is ready — plug in Chart.js or your library in extra_js."
-msgstr "Chart data is ready — plug in Chart.js or your library in extra_js."
+msgid "Official bullion prices with selectable bar weight"
+msgstr "Official bullion prices with selectable bar weight"
 
-msgid "Chart series empty — fill build_chart_series()."
-msgstr "Chart series empty — fill build_chart_series()."
+msgid "Select weight"
+msgstr "Select weight"
+
+msgid "Per gram"
+msgstr "Per gram"
+
+msgid "Updated"
+msgstr "Updated"
+
+msgid "UZS / selected weight"
+msgstr "UZS / selected weight"
+
+msgid "UZS / %(weight)s"
+msgstr "UZS / %(weight)s"
+
+msgid "CBU history"
+msgstr "CBU history"
+
+msgid "Official daily rates for USD, EUR and RUB from the database"
+msgstr "Official daily rates for USD, EUR and RUB from the database"
+
+msgid "CBU history will appear when archived rates exist in the database"
+msgstr "CBU history will appear when archived rates exist in the database"
 
 msgid "Forecast"
 msgstr "Forecast"
+
+msgid "Current CBU rates against model forecast"
+msgstr "Current CBU rates against model forecast"
+
+msgid "Forecast will appear when model output exists in the database"
+msgstr "Forecast will appear when model output exists in the database"
+
+msgid "Commercial banks"
+msgstr "Commercial banks"
+
+msgid "Available today"
+msgstr "Available today"
+
+msgid "Highest buy for individuals"
+msgstr "Highest buy for individuals"
+
+msgid "Lowest sell for individuals"
+msgstr "Lowest sell for individuals"
+
+msgid "Gold selected weight"
+msgstr "Gold selected weight"
+
+msgid "Bank rates"
+msgstr "Bank rates"
+
+msgid "Sort by"
+msgstr "Sort by"
+
+msgid "Alphabetical"
+msgstr "Alphabetical"
+
+msgid "Sell ascending"
+msgstr "Sell ascending"
+
+msgid "Sell descending"
+msgstr "Sell descending"
+
+msgid "Buy ascending"
+msgstr "Buy ascending"
+
+msgid "Buy descending"
+msgstr "Buy descending"
+
+msgid "Search bank..."
+msgstr "Search bank..."
+
+msgid "Reference"
+msgstr "Reference"
+
+msgid "Buy"
+msgstr "Buy"
+
+msgid "Official reference rate"
+msgstr "Official reference rate"
+
+msgid "Sell"
+msgstr "Sell"
+
+msgid "Spread"
+msgstr "Spread"
+
+msgid "No data"
+msgstr "No data"
+
+msgid "Database has no rates for the selected currency yet"
+msgstr "Database has no rates for the selected currency yet"
+
+msgid "Rate comparison"
+msgstr "Rate comparison"
+
+msgid "For"
+msgstr "For"
+
+msgid "Bank"
+msgstr "Bank"
+
+msgid "Reference rate"
+msgstr "Reference rate"
+
+msgid "Central bank"
+msgstr "Central bank"
+
+msgid "Commercial bank"
+msgstr "Commercial bank"
+
+msgid "Current CBU rate"
+msgstr "Current CBU rate"
+
+msgid "Model forecast"
+msgstr "Model forecast"
