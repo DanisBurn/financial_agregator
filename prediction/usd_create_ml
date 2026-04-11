@@ -1,0 +1,69 @@
+import pandas as pd
+import numpy as np
+import joblib
+
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+
+df = pd.read_csv(
+    "/kaggle/input/datasets/amaliyadubrovskaya04/currency/cbu_currency_rates_2017-09-06_2026-03-29.csv",
+    low_memory=False
+)
+
+usd = df[df["ccy"] == "USD"].copy()
+
+usd["published_date"] = pd.to_datetime(usd["published_date"], dayfirst=True, errors="coerce")
+usd["rate"] = pd.to_numeric(usd["rate"], errors="coerce")
+
+usd = usd.dropna(subset=["published_date", "rate"])
+
+usd = usd.sort_values("published_date")
+
+usd = usd.groupby("published_date")["rate"].last().reset_index()
+
+usd["lag1"] = usd["rate"].shift(1)
+usd["lag2"] = usd["rate"].shift(2)
+usd["day_of_week"] = usd["published_date"].dt.dayofweek
+usd["month"] = usd["published_date"].dt.month
+usd["day_of_month"] = usd["published_date"].dt.day
+
+usd = usd.dropna().reset_index(drop=True)
+
+train_size = int(len(usd) * 0.8)
+
+train = usd.iloc[:train_size].copy()
+test = usd.iloc[train_size:].copy()
+
+feature_cols = ["lag1", "lag2", "day_of_week", "month", "day_of_month"]
+
+X_train = train[feature_cols]
+y_train = train["rate"]
+
+X_test = test[feature_cols]
+y_test = test["rate"]
+
+lr_model = LinearRegression()
+lr_model.fit(X_train, y_train)
+
+lr_pred = lr_model.predict(X_test)
+
+mae = mean_absolute_error(y_test, lr_pred)
+rmse = np.sqrt(mean_squared_error(y_test, lr_pred))
+mape = np.mean(np.abs((y_test - lr_pred) / y_test)) * 100
+
+print("Linear Regression metrics:")
+print(f"MAE:  {mae:.6f}")
+print(f"RMSE: {rmse:.6f}")
+print(f"MAPE: {mape:.6f}%")
+
+joblib.dump(lr_model, "linear_regression_usd.pkl")
+print("\nМодель сохранена в файл: linear_regression_usd.pkl")
+
+joblib.dump(
+    {
+        "model": lr_model,
+        "features": feature_cols
+    },
+    "linear_regression_usd_with_features.pkl"
+)
+print("Модель и список признаков сохранены в файл: linear_regression_usd_with_features.pkl")
