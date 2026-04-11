@@ -1,11 +1,26 @@
-beautifulsoup4
-curl-cffi
-joblib
-numpy
-pandas
-pyTelegramBotAPI
-pymongo
-python-dotenv
-requests
-scikit-learn
-urllib3
+# Core scraping
+requests==2.33.0
+urllib3==2.6.3
+beautifulsoup4==4.14.3
+curl-cffi==0.15.0
+
+# Database
+pymongo==3.12.0
+dnspython==1.16.0
+
+# Web
+Django==6.0.4
+
+# ML / forecasting
+numpy==2.4.4
+pandas==3.0.1
+joblib==1.5.3
+scikit-learn==1.8.0
+
+# Telegram bot
+pyTelegramBotAPI==4.32.0
+
+# Tests
+pytest==9.0.3
+pytest-django==4.12.0
+pytest-mock==3.15.1
