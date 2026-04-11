@@ -1,0 +1,20 @@
+app = "kursuz-bot"
+primary_region = "arn"
+kill_signal = "SIGINT"
+kill_timeout = "30s"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PYTHONUNBUFFERED = "1"
+  MINIAPP_URL = "https://kursuz-web.fly.dev/miniapp/"
+  MINIAPP_DEFAULT_LANGUAGE = "ru"
+
+[processes]
+  app = "/app/docker/start-bot.sh"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

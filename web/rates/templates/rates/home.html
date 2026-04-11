@@ -257,16 +257,16 @@
     <div style="display:flex;gap:8px;align-items:center;">
       <span style="font-size:0.76rem;color:var(--muted);">{% trans "Sort by" %}:</span>
       <select class="sort-sel" id="sort-select">
-        <option value="name-asc">{% trans "Alphabetical" %}</option>
-        <option value="buy-best">{% trans "Best buy for individuals" %}</option>
-        <option value="sell-best">{% trans "Best sell for individuals" %}</option>
+        <option value="alpha">{% trans "Alphabetical" %}</option>
+        <option value="buy-from-bank">{% trans "Lowest sell for individuals" %}</option>
+        <option value="sell-to-bank">{% trans "Highest buy for individuals" %}</option>
       </select>
     </div>
   </div>
 
   <div class="currency-tabs">
     {% for cur in currencies %}
-      <a class="ctab {% if cur == current_currency %}active{% endif %}" href="?c={{ cur }}">{{ cur }}</a>
+      <a class="ctab {% if cur == current_currency %}active{% endif %}" href="?c={{ cur }}{% if miniapp_mode %}&amp;miniapp=1{% endif %}">{{ cur }}</a>
     {% endfor %}
   </div>
 

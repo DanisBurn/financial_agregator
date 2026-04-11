@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import json
 import os
+import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 from django.utils.translation import gettext as _
 
-try:
-    from pymongo import MongoClient
-except ImportError:
-    MongoClient = None
+MongoClient = None
+_MONGO_IMPORT_FAILED = False
 
 
 MONGO_URI = os.getenv(
@@ -124,12 +123,39 @@ def _empty_snapshot(cbu_history: dict[str, list[dict[str, Any]]] | None = None) 
     )
 
 
-def _create_client():
-    if MongoClient is None:
+def _get_mongo_client_class():
+    global MongoClient, _MONGO_IMPORT_FAILED
+
+    if MongoClient is not None:
+        return MongoClient
+
+    if _MONGO_IMPORT_FAILED:
         return None
 
     try:
-        return MongoClient(
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=r".*datetime\.datetime\.utcfromtimestamp\(\) is deprecated.*",
+                category=DeprecationWarning,
+                module=r"bson(\..*)?",
+            )
+            from pymongo import MongoClient as pymongo_client
+    except Exception:
+        _MONGO_IMPORT_FAILED = True
+        return None
+
+    MongoClient = pymongo_client
+    return MongoClient
+
+
+def _create_client():
+    mongo_client_class = _get_mongo_client_class()
+    if mongo_client_class is None:
+        return None
+
+    try:
+        return mongo_client_class(
             MONGO_URI,
             serverSelectionTimeoutMS=2000,
             connectTimeoutMS=2000,
@@ -157,15 +183,18 @@ def _find_previous_date(collection, current_date: str | None) -> str | None:
 def _load_cbu_history_from_collection(collection) -> dict[str, list[dict[str, Any]]]:
     history: dict[str, list[dict[str, Any]]] = {}
     for currency in HISTORY_CURRENCIES:
-        docs = list(
-            collection.find(
-                {"bank_name": "CBU", "currency": currency},
-                {"_id": 0},
-            )
-            .sort([("date_only", -1), ("timestamp", -1)])
-            .limit(7)
+        docs = _dedupe_docs(
+            list(
+                collection.find(
+                    {"bank_name": "CBU", "currency": currency},
+                    {"_id": 0},
+                )
+                .sort([("date_only", -1), ("timestamp", -1), ("loaded_at", -1)])
+                .limit(21)
+            ),
+            ("date_only", "bank_name", "currency"),
         )
-        history[currency] = list(reversed(docs))
+        history[currency] = sorted(docs, key=lambda doc: str(doc.get("date_only") or ""))[-7:]
     return history
 
 
@@ -235,33 +264,47 @@ def load_dashboard_snapshot() -> DashboardSnapshot:
 
         previous_date = _find_previous_date(currency_collection, current_date)
 
-        current_currency_docs = list(
-            currency_collection.find({"date_only": current_date}, {"_id": 0}).sort(
-                [("currency", 1), ("bank_name", 1)]
+        current_currency_docs = _dedupe_currency_docs(
+            list(
+                currency_collection.find({"date_only": current_date}, {"_id": 0}).sort(
+                    [("timestamp", -1), ("loaded_at", -1), ("currency", 1), ("bank_name", 1)]
+                )
             )
         )
         previous_currency_docs: list[dict[str, Any]] = []
         if previous_date:
-            previous_currency_docs = list(
-                currency_collection.find({"date_only": previous_date}, {"_id": 0}).sort(
-                    [("currency", 1), ("bank_name", 1)]
+            previous_currency_docs = _dedupe_currency_docs(
+                list(
+                    currency_collection.find({"date_only": previous_date}, {"_id": 0}).sort(
+                        [("timestamp", -1), ("loaded_at", -1), ("currency", 1), ("bank_name", 1)]
+                    )
                 )
             )
 
         gold_collection = db[MONGO_GOLD_COLLECTION_NAME]
-        current_gold_docs = list(
-            gold_collection.find({"date_only": current_date}, {"_id": 0}).sort([("weight", 1)])
+        current_gold_docs = _dedupe_gold_docs(
+            list(
+                gold_collection.find({"date_only": current_date}, {"_id": 0}).sort(
+                    [("timestamp", -1), ("loaded_at", -1), ("weight", 1)]
+                )
+            )
         )
         previous_gold_docs: list[dict[str, Any]] = []
         if previous_date:
-            previous_gold_docs = list(
-                gold_collection.find({"date_only": previous_date}, {"_id": 0}).sort([("weight", 1)])
+            previous_gold_docs = _dedupe_gold_docs(
+                list(
+                    gold_collection.find({"date_only": previous_date}, {"_id": 0}).sort(
+                        [("timestamp", -1), ("loaded_at", -1), ("weight", 1)]
+                    )
+                )
             )
 
-        prediction_docs = list(
-            db[MONGO_PREDICTIONS_COLLECTION_NAME]
-            .find({"date_only": current_date}, {"_id": 0})
-            .sort([("bank_name", 1), ("currency", 1)])
+        prediction_docs = _dedupe_prediction_docs(
+            list(
+                db[MONGO_PREDICTIONS_COLLECTION_NAME]
+                .find({"date_only": current_date}, {"_id": 0})
+                .sort([("timestamp", -1), ("loaded_at", -1), ("bank_name", 1), ("currency", 1)])
+            )
         )
 
         return DashboardSnapshot(
@@ -329,6 +372,87 @@ def _format_chart_date(value: str | None) -> str | None:
         return value
 
 
+def _sortable_doc_value(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return str(value)
+
+
+def _doc_recency_key(doc: dict[str, Any]) -> tuple[str, str, str, str]:
+    return (
+        _sortable_doc_value(doc.get("date_only")),
+        _sortable_doc_value(doc.get("timestamp")),
+        _sortable_doc_value(doc.get("loaded_at")),
+        _sortable_doc_value(doc.get("predicted_for_date")),
+    )
+
+
+def _doc_identity(doc: dict[str, Any], key_fields: tuple[str, ...]) -> tuple[str, ...]:
+    parts = []
+    for field in key_fields:
+        value = doc.get(field)
+        text = str(value).strip() if value is not None else ""
+        if field == "currency":
+            text = text.upper()
+        parts.append(text)
+    return tuple(parts)
+
+
+def _dedupe_docs(raw: list[dict[str, Any]], key_fields: tuple[str, ...]) -> list[dict[str, Any]]:
+    latest_docs: dict[tuple[str, ...], dict[str, Any]] = {}
+
+    for doc in raw:
+        identity = _doc_identity(doc, key_fields)
+        if not all(identity):
+            continue
+
+        current_doc = latest_docs.get(identity)
+        if current_doc is None or _doc_recency_key(doc) >= _doc_recency_key(current_doc):
+            latest_docs[identity] = doc
+
+    return list(latest_docs.values())
+
+
+def _dedupe_currency_docs(raw: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        _dedupe_docs(raw, ("bank_name", "currency")),
+        key=lambda doc: (
+            str(doc.get("currency") or "").upper(),
+            _display_bank_name(str(doc.get("bank_name") or "")).lower(),
+        ),
+    )
+
+
+def _dedupe_gold_docs(raw: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        _dedupe_docs(raw, ("weight",)),
+        key=lambda doc: (_parse_weight_grams(str(doc.get("weight") or "")) or 10**9, str(doc.get("weight") or "")),
+    )
+
+
+def _dedupe_prediction_docs(raw: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    latest_docs: dict[str, dict[str, Any]] = {}
+
+    for doc in raw:
+        currency = str(doc.get("currency") or "").upper()
+        if not currency:
+            continue
+
+        current_doc = latest_docs.get(currency)
+        if current_doc is None or _doc_recency_key(doc) >= _doc_recency_key(current_doc):
+            latest_docs[currency] = doc
+
+    return sorted(
+        latest_docs.values(),
+        key=lambda doc: (
+            str(doc.get("bank_name") or "").lower(),
+            str(doc.get("currency") or "").upper(),
+        ),
+    )
+
+
 def _doc_timestamp(doc: dict[str, Any]) -> str:
     return str(doc.get("timestamp") or "")
 
@@ -379,7 +503,7 @@ def _bank_visual(bank_name: str) -> dict[str, str]:
 
 def _index_currency_docs(raw: list[dict[str, Any]]) -> dict[tuple[str, str], dict[str, Any]]:
     indexed: dict[tuple[str, str], dict[str, Any]] = {}
-    for doc in raw:
+    for doc in _dedupe_currency_docs(raw):
         bank_name = str(doc.get("bank_name") or "")
         currency = str(doc.get("currency") or "").upper()
         if bank_name and currency:
@@ -389,7 +513,7 @@ def _index_currency_docs(raw: list[dict[str, Any]]) -> dict[tuple[str, str], dic
 
 def _group_currency_docs(raw: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     grouped: dict[str, list[dict[str, Any]]] = {}
-    for doc in raw:
+    for doc in _dedupe_currency_docs(raw):
         currency = str(doc.get("currency") or "").upper()
         if currency:
             grouped.setdefault(currency, []).append(doc)
@@ -398,7 +522,7 @@ def _group_currency_docs(raw: list[dict[str, Any]]) -> dict[str, list[dict[str, 
 
 def _index_gold_docs(raw: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     indexed: dict[str, dict[str, Any]] = {}
-    for doc in raw:
+    for doc in _dedupe_gold_docs(raw):
         weight = str(doc.get("weight") or "")
         if weight:
             indexed[weight] = doc
@@ -497,7 +621,7 @@ def build_bank_cards(
     previous_index = _index_currency_docs(previous_raw or [])
     cards: list[BankCard] = []
 
-    for doc in raw:
+    for doc in _dedupe_currency_docs(raw):
         if str(doc.get("currency") or "").upper() != current_currency:
             continue
 
@@ -564,7 +688,7 @@ def build_cbu_reference_block(
     previous_index = _index_currency_docs(previous_raw or [])
     current_docs = {
         str(doc.get("currency") or "").upper(): doc
-        for doc in raw
+        for doc in _dedupe_currency_docs(raw)
         if str(doc.get("bank_name") or "") == "CBU" and doc.get("currency")
     }
 
@@ -630,10 +754,7 @@ def build_compare_rows(banks: list[BankCard]) -> list[dict[str, Any]]:
             "is_best_sell": bank.is_best_sell,
             "is_reference": bank.is_reference,
         }
-        for bank in sorted(
-            banks,
-            key=lambda card: (card.is_reference, card.buy is None, -(card.buy or 0), card.name.lower()),
-        )
+        for bank in sorted(banks, key=lambda card: card.name.lower())
     ]
 
 
@@ -931,11 +1052,11 @@ def build_forecast_chart(
     cbu_history: dict[str, list[dict[str, Any]]] | None = None,
     prediction_docs: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
-    prediction_docs = prediction_docs or []
+    prediction_docs = _dedupe_prediction_docs(prediction_docs or [])
     cbu_history = cbu_history or {}
     current_cbu_rates = {
         str(doc.get("currency") or "").upper(): _extract_doc_rate(doc)
-        for doc in raw
+        for doc in _dedupe_currency_docs(raw)
         if str(doc.get("bank_name") or "") == "CBU"
     }
 

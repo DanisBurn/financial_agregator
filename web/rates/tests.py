@@ -45,6 +45,20 @@ class HomePageServiceTests(SimpleTestCase):
         self.assertTrue(cbu_reference["rates"][0]["is_active"])
         self.assertEqual(cbu_reference["rates"][0]["rate_display"], "12 229")
 
+    def test_build_bank_cards_deduplicates_latest_doc_per_bank_currency(self):
+        raw = [
+            {"bank_name": "Agrobank", "currency": "USD", "buy": 12100, "sell": 12210, "timestamp": "2026-04-10T10:00:00"},
+            {"bank_name": "Agrobank", "currency": "USD", "buy": 12150, "sell": 12200, "timestamp": "2026-04-10T12:00:00"},
+            {"bank_name": "XB", "currency": "USD", "buy": 12140, "sell": 12195, "timestamp": "2026-04-10T11:00:00"},
+        ]
+
+        cards = home_page.build_bank_cards("USD", raw)
+
+        self.assertEqual([card.name for card in cards], ["Agrobank", "XalqBank"])
+        agrobank = next(card for card in cards if card.name == "Agrobank")
+        self.assertEqual(agrobank.buy, 12150)
+        self.assertEqual(agrobank.sell, 12200)
+
     def test_supported_currencies_ignore_reference_only_rows(self):
         currencies = home_page.get_supported_currencies(
             [
@@ -72,6 +86,20 @@ class HomePageServiceTests(SimpleTestCase):
         self.assertEqual(gold["buy_damaged_display"], "660 000")
         self.assertEqual([option["weight"] for option in gold["options"]], ["1 g", "5 g", "10 g"])
         self.assertGreater(gold["change_pct"], 0)
+
+    def test_build_compare_rows_defaults_to_alphabetical_order(self):
+        cards = home_page.build_bank_cards(
+            "USD",
+            [
+                {"bank_name": "Zeta Bank", "currency": "USD", "buy": 12100, "sell": 12200},
+                {"bank_name": "Alpha Bank", "currency": "USD", "buy": 12000, "sell": 12100},
+                {"bank_name": "Beta Bank", "currency": "USD", "buy": 12200, "sell": 12300},
+            ],
+        )
+
+        rows = home_page.build_compare_rows(cards)
+
+        self.assertEqual([row["name"] for row in rows], ["Alpha Bank", "Beta Bank", "Zeta Bank"])
 
     def test_build_history_and_forecast_chart_shapes(self):
         history_chart = home_page.build_history_chart(

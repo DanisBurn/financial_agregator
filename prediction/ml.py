@@ -2,7 +2,28 @@ import os
 import joblib
 import pandas as pd
 from datetime import datetime, timedelta
-from pymongo import MongoClient
+
+MongoClient = None
+_MONGO_IMPORT_FAILED = False
+
+
+def _get_mongo_client_class():
+    global MongoClient, _MONGO_IMPORT_FAILED
+
+    if MongoClient is not None:
+        return MongoClient
+
+    if _MONGO_IMPORT_FAILED:
+        return None
+
+    try:
+        from pymongo import MongoClient as pymongo_client
+    except Exception:
+        _MONGO_IMPORT_FAILED = True
+        return None
+
+    MongoClient = pymongo_client
+    return MongoClient
 
 
 class CBUPredictor:
@@ -72,7 +93,11 @@ class CBUPredictor:
         """
         Берем последний сохраненный курс USD Центрального банка из MongoDB.
         """
-        client = MongoClient(self.mongo_uri)
+        mongo_client_class = _get_mongo_client_class()
+        if mongo_client_class is None:
+            raise ImportError("Не удалось импортировать pymongo")
+
+        client = mongo_client_class(self.mongo_uri)
         db = client[self.db_name]
         collection = db[self.collection_name]
 

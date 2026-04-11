@@ -23,6 +23,11 @@ function parseJsonScript(id) {
   }
 }
 
+function getCsrfToken() {
+  const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
 function startClock() {
   const clockEl = document.getElementById('clock');
   const dateEl = document.getElementById('date-str');
@@ -47,6 +52,11 @@ function initThemeToggle() {
   const btn = document.getElementById('theme-btn');
   if (!btn) return;
 
+  if (document.body.classList.contains('is-miniapp') || document.body.dataset.telegramThemeLocked === '1') {
+    btn.style.display = 'none';
+    return;
+  }
+
   const apply = (mode) => {
     const isDark = mode !== 'light';
     document.body.classList.toggle('light', !isDark);
@@ -67,6 +77,151 @@ function parseOptionalNumber(rawValue) {
   if (rawValue === null || rawValue === undefined || rawValue === '') return null;
   const numeric = Number(rawValue);
   return Number.isFinite(numeric) ? numeric : null;
+}
+
+function normalizeTelegramUser(rawUser) {
+  if (!rawUser) return null;
+
+  const firstName = rawUser.first_name || rawUser.firstName || '';
+  const lastName = rawUser.last_name || rawUser.lastName || '';
+  const username = rawUser.username || '';
+  const displayName = rawUser.display_name || [firstName, lastName].filter(Boolean).join(' ').trim() || username || 'Telegram user';
+  const initials = rawUser.initials || displayName.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'TG';
+
+  return {
+    displayName,
+    initials,
+    username,
+    photoUrl: rawUser.photo_url || rawUser.photoUrl || '',
+  };
+}
+
+function renderTelegramUser(rawUser) {
+  const user = normalizeTelegramUser(rawUser);
+  const chip = document.getElementById('tg-user-chip');
+  const avatar = document.getElementById('tg-user-avatar');
+  const name = document.getElementById('tg-user-name');
+  const meta = document.getElementById('tg-user-meta');
+  if (!chip || !avatar || !name || !meta) return;
+
+  if (!user) {
+    chip.classList.add('is-hidden');
+    return;
+  }
+
+  chip.classList.remove('is-hidden');
+  name.textContent = user.displayName;
+  meta.textContent = user.username ? `@${user.username}` : 'Signed in with Telegram';
+
+  if (user.photoUrl) {
+    avatar.textContent = '';
+    avatar.style.backgroundImage = `url("${user.photoUrl}")`;
+    avatar.style.backgroundSize = 'cover';
+    avatar.style.backgroundPosition = 'center';
+  } else {
+    avatar.style.backgroundImage = '';
+    avatar.textContent = user.initials;
+  }
+}
+
+function applyTelegramTheme(themeParams, colorScheme) {
+  if (!themeParams && !colorScheme) return;
+
+  const root = document.documentElement;
+  const setVar = (name, value) => {
+    if (value) root.style.setProperty(name, value);
+  };
+
+  setVar('--bg', themeParams?.bg_color);
+  setVar('--surface', themeParams?.secondary_bg_color || themeParams?.section_bg_color);
+  setVar('--surface2', themeParams?.section_bg_color || themeParams?.secondary_bg_color);
+  setVar('--text', themeParams?.text_color);
+  setVar('--muted', themeParams?.hint_color);
+  setVar('--accent', themeParams?.button_color);
+  setVar('--accent3', themeParams?.destructive_text_color);
+  setVar('--header-logo', themeParams?.text_color);
+  setVar('--ticker-bg', themeParams?.secondary_bg_color || themeParams?.bg_color);
+  setVar('--sort-bg', themeParams?.secondary_bg_color || themeParams?.bg_color);
+  setVar('--rate-box-bg', themeParams?.section_bg_color || themeParams?.secondary_bg_color);
+  setVar('--table-head-bg', themeParams?.secondary_bg_color || themeParams?.bg_color);
+
+  if (colorScheme === 'light') {
+    document.body.classList.add('light');
+  } else if (colorScheme === 'dark') {
+    document.body.classList.remove('light');
+  }
+
+  document.body.dataset.telegramThemeLocked = '1';
+}
+
+function updateTelegramSafeArea(webApp) {
+  const insets = webApp?.contentSafeAreaInset || webApp?.safeAreaInset || {};
+  const root = document.documentElement;
+  root.style.setProperty('--tg-safe-top', `${Number(insets.top || 0)}px`);
+  root.style.setProperty('--tg-safe-bottom', `${Number(insets.bottom || 0)}px`);
+}
+
+async function authenticateTelegramMiniApp(config, webApp) {
+  if (!config?.authUrl || !webApp?.initData) return null;
+
+  try {
+    const response = await fetch(config.authUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+      },
+      body: JSON.stringify({ init_data: webApp.initData }),
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload?.ok) return null;
+    return payload.user || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+async function initTelegramMiniApp() {
+  const config = parseJsonScript('miniapp-config') || {};
+  const existingUser = parseJsonScript('telegram-user-data');
+  const webApp = window.Telegram?.WebApp;
+
+  if (!config.mode && !webApp) {
+    renderTelegramUser(existingUser);
+    return;
+  }
+
+  document.body.classList.add('is-miniapp');
+  renderTelegramUser(existingUser || config.telegramUser);
+
+  if (!webApp) return;
+
+  try {
+    webApp.ready();
+    webApp.expand();
+  } catch (error) {
+    // noop
+  }
+
+  applyTelegramTheme(webApp.themeParams || {}, webApp.colorScheme);
+  updateTelegramSafeArea(webApp);
+  renderTelegramUser(existingUser || config.telegramUser || webApp.initDataUnsafe?.user);
+
+  if (typeof webApp.onEvent === 'function') {
+    webApp.onEvent('themeChanged', () => {
+      applyTelegramTheme(webApp.themeParams || {}, webApp.colorScheme);
+    });
+    webApp.onEvent('viewportChanged', () => {
+      updateTelegramSafeArea(webApp);
+      window.dispatchEvent(new Event('resize'));
+    });
+  }
+
+  const authenticatedUser = await authenticateTelegramMiniApp(config, webApp);
+  if (authenticatedUser) {
+    renderTelegramUser(authenticatedUser);
+  }
 }
 
 function initBankSearchAndSort() {
@@ -106,12 +261,12 @@ function initBankSearchAndSort() {
       return 0;
     };
     const comparator = (a, b) => {
-      if (mode === 'buy-best') {
+      if (mode === 'sell-to-bank') {
         const nullableResult = compareNullable(keyBuy(a), keyBuy(b), keyName(a).localeCompare(keyName(b), getLocale()));
         if (nullableResult !== 0) return nullableResult;
         return keyBuy(b) - keyBuy(a) || keyName(a).localeCompare(keyName(b), getLocale());
       }
-      if (mode === 'sell-best') {
+      if (mode === 'buy-from-bank') {
         const nullableResult = compareNullable(keySell(a), keySell(b), keyName(a).localeCompare(keyName(b), getLocale()));
         if (nullableResult !== 0) return nullableResult;
         return keySell(a) - keySell(b) || keyName(a).localeCompare(keyName(b), getLocale());
@@ -355,8 +510,9 @@ function initCharts() {
   render();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   startClock();
+  await initTelegramMiniApp();
   initThemeToggle();
   initBankSearchAndSort();
   initGoldSelector();

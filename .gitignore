@@ -1,2 +1,11 @@
 __pycache__/
 venv/
+.venv/
+.env
+Verified
+Verifying
+web/db.sqlite3
+web/staticfiles/
+*.pyc
+*.pyo
+.pytest_cache/

@@ -194,3 +194,12 @@ msgstr "Прогноз модели"
 
 msgid "Current"
 msgstr "Текущий"
+
+msgid "Telegram Mini App"
+msgstr "Telegram Mini App"
+
+msgid "Telegram user"
+msgstr "Пользователь Telegram"
+
+msgid "Signed in with Telegram"
+msgstr "Вход через Telegram"

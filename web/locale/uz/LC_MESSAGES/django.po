@@ -194,3 +194,12 @@ msgstr "Model prognozi"
 
 msgid "Current"
 msgstr "Joriy"
+
+msgid "Telegram Mini App"
+msgstr "Telegram Mini App"
+
+msgid "Telegram user"
+msgstr "Telegram foydalanuvchisi"
+
+msgid "Signed in with Telegram"
+msgstr "Telegram orqali kirilgan"
