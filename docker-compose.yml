@@ -1,0 +1,80 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: kursuz-mongo
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: financial_agregator:latest
+    container_name: kursuz-web
+    command: ["/app/docker/start-web.sh"]
+    env_file:
+      - .env
+    environment:
+      PORT: "8000"
+      SQLITE_PATH: "/data/db.sqlite3"
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-127.0.0.1,localhost,testserver,web}"
+      MINIAPP_URL: "${MINIAPP_URL:-http://localhost:8886/miniapp/}"
+      MINIAPP_DEFAULT_LANGUAGE: "${MINIAPP_DEFAULT_LANGUAGE:-ru}"
+      MONGO_URI: "${MONGO_URI:-mongodb://mongo:27017/?directConnection=true}"
+      WEB_CONCURRENCY: "${WEB_CONCURRENCY:-2}"
+      GUNICORN_TIMEOUT: "${GUNICORN_TIMEOUT:-120}"
+    ports:
+      - "${WEB_PORT:-8886}:8000"
+    volumes:
+      - django_data:/data
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  bot:
+    image: financial_agregator:latest
+    container_name: kursuz-bot
+    command: ["/app/docker/start-bot.sh"]
+    env_file:
+      - .env
+    environment:
+      MINIAPP_URL: "${MINIAPP_URL:-http://localhost:8886/miniapp/}"
+      MINIAPP_DEFAULT_LANGUAGE: "${MINIAPP_DEFAULT_LANGUAGE:-ru}"
+      MONGO_URI: "${MONGO_URI:-mongodb://mongo:27017/?directConnection=true}"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+
+  updater:
+    image: financial_agregator:latest
+    container_name: kursuz-updater
+    command: ["/app/docker/start-updater.sh"]
+    env_file:
+      - .env
+    environment:
+      MONGO_URI: "${MONGO_URI:-mongodb://mongo:27017/?directConnection=true}"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  django_data:
+  mongo_data:

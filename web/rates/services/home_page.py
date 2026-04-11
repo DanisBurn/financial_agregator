@@ -754,10 +754,7 @@ def build_compare_rows(banks: list[BankCard]) -> list[dict[str, Any]]:
             "is_best_sell": bank.is_best_sell,
             "is_reference": bank.is_reference,
         }
-        for bank in sorted(
-            banks,
-            key=lambda card: (card.is_reference, card.buy is None, -(card.buy or 0), card.name.lower()),
-        )
+        for bank in sorted(banks, key=lambda card: card.name.lower())
     ]
 
 

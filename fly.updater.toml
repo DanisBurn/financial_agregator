@@ -1,0 +1,18 @@
+app = "kursuz-updater"
+primary_region = "arn"
+kill_signal = "SIGINT"
+kill_timeout = "30s"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PYTHONUNBUFFERED = "1"
+
+[processes]
+  app = "/app/docker/start-updater.sh"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

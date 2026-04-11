@@ -4,18 +4,44 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b0e14">
   <title>{% block title %}{% trans "ProjectZoloto" %}{% endblock %}</title>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Geologica:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'rates/app.css' %}">
   {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body class="{% if miniapp_mode %}is-miniapp{% endif %}" data-miniapp-mode="{% if miniapp_mode %}1{% else %}0{% endif %}">
   <div class="bg-blob" aria-hidden="true"></div>
 
   <div class="wrap">
     <header>
       <div class="logo">KURS<span>.</span>UZ</div>
       <div class="header-right">
+        <div class="miniapp-badge" id="miniapp-badge">
+          <span class="miniapp-badge-mark">TG</span>
+          <span>{% trans "Telegram Mini App" %}</span>
+        </div>
+
+        <div class="telegram-user-chip{% if not telegram_user %} is-hidden{% endif %}" id="tg-user-chip">
+          <div class="telegram-user-avatar" id="tg-user-avatar">
+            {% if telegram_user %}
+              {{ telegram_user.initials|default:"TG" }}
+            {% else %}
+              TG
+            {% endif %}
+          </div>
+          <div class="telegram-user-copy">
+            <strong id="tg-user-name">
+              {% if telegram_user %}
+                {{ telegram_user.display_name|default:"Telegram user" }}
+              {% else %}
+                {% trans "Telegram user" %}
+              {% endif %}
+            </strong>
+            <span id="tg-user-meta">{% trans "Signed in with Telegram" %}</span>
+          </div>
+        </div>
+
         <div class="live-badge" title="{% trans 'Live rates' %}">
           <div class="live-dot"></div><span>{% trans "LIVE RATES" %}</span>
         </div>
@@ -57,6 +83,9 @@
     </footer>
   </div>
 
+  {{ miniapp_config|json_script:"miniapp-config" }}
+  {{ telegram_user|json_script:"telegram-user-data" }}
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="{% static 'rates/app.js' %}"></script>
   {% block extra_js %}{% endblock %}
 </body>

@@ -87,6 +87,20 @@ class HomePageServiceTests(SimpleTestCase):
         self.assertEqual([option["weight"] for option in gold["options"]], ["1 g", "5 g", "10 g"])
         self.assertGreater(gold["change_pct"], 0)
 
+    def test_build_compare_rows_defaults_to_alphabetical_order(self):
+        cards = home_page.build_bank_cards(
+            "USD",
+            [
+                {"bank_name": "Zeta Bank", "currency": "USD", "buy": 12100, "sell": 12200},
+                {"bank_name": "Alpha Bank", "currency": "USD", "buy": 12000, "sell": 12100},
+                {"bank_name": "Beta Bank", "currency": "USD", "buy": 12200, "sell": 12300},
+            ],
+        )
+
+        rows = home_page.build_compare_rows(cards)
+
+        self.assertEqual([row["name"] for row in rows], ["Alpha Bank", "Beta Bank", "Zeta Bank"])
+
     def test_build_history_and_forecast_chart_shapes(self):
         history_chart = home_page.build_history_chart(
             {

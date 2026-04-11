@@ -1,5 +1,7 @@
 {
-    "timestamp": "2026-04-10T22:50:31.593541",
+    "timestamp": "2026-04-11T09:01:12.312598",
+    "currency_updated_at": "2026-04-11T09:01:11.625486",
+    "gold_updated_at": "2026-04-11T09:01:12.311095",
     "banks": {
         "Agrobank": {
             "USD": {
@@ -32,29 +34,29 @@
         "Anorbank": {
             "USD": {
                 "buy": 12100.0,
-                "sell": 12200.0
+                "sell": 12160.0
             },
             "EUR": {
-                "buy": 13930.0,
-                "sell": 14500.0
+                "buy": 13920.0,
+                "sell": 14490.0
             },
             "RUB": {
                 "buy": 140.0,
-                "sell": 163.0
+                "sell": 164.0
             }
         },
         "Apex Bank": {
             "USD": {
                 "buy": 12100.0,
-                "sell": 12195.0
+                "sell": 12190.0
             },
             "EUR": {
                 "buy": 12100.0,
-                "sell": 12195.0
+                "sell": 12190.0
             },
             "RUB": {
                 "buy": 12100.0,
-                "sell": 12195.0
+                "sell": 12190.0
             }
         },
         "AsakaBank": {
@@ -87,8 +89,8 @@
         },
         "BRB": {
             "USD": {
-                "buy": 12100.0,
-                "sell": 12220.0
+                "buy": 12110.0,
+                "sell": 12190.0
             },
             "EUR": {
                 "buy": 13900.0,
@@ -140,15 +142,15 @@
         "HamkorBank": {
             "USD": {
                 "buy": 12100.0,
-                "sell": 12220.0
+                "sell": 12200.0
             },
             "EUR": {
                 "buy": 13500.0,
                 "sell": 14400.0
             },
             "RUB": {
-                "buy": 139.0,
-                "sell": 158.0
+                "buy": 141.0,
+                "sell": 159.0
             }
         },
         "InfinBank": {
@@ -182,7 +184,7 @@
         "IpotekaBank": {
             "USD": {
                 "buy": 12100.0,
-                "sell": 12200.0
+                "sell": 12195.0
             },
             "EUR": {
                 "buy": 13000.0,
@@ -190,7 +192,7 @@
             },
             "RUB": {
                 "buy": 100.0,
-                "sell": 161.0
+                "sell": 163.0
             }
         },
         "Kapital Bank": {
@@ -402,8 +404,8 @@
     "predictions": {
         "CBU": {
             "EUR": {
-                "predicted_for_date": "2026-04-11",
-                "predicted_rate": 14234.7498,
+                "predicted_for_date": "2026-04-12",
+                "predicted_rate": 14222.3582,
                 "model": "Ridge_alpha=10.0",
                 "model_path": "/home/user/py_project/financial_agregator/prediction/eur_model.pkl",
                 "features_used": {
@@ -412,30 +414,28 @@
                     "diff_lag1_lag2": 0.0,
                     "ratio_lag1_lag2": 1.0,
                     "mean_lag1_lag2": 14241.49,
-                    "day_of_week": 5,
+                    "day_of_week": 6,
                     "month": 4,
-                    "day_of_month": 11,
-                    "dow_sin": -0.9749279121818236,
-                    "dow_cos": -0.2225209339563146,
+                    "day_of_month": 12,
+                    "dow_sin": -0.7818314824680299,
+                    "dow_cos": 0.6234898018587334,
                     "month_sin": 0.8660254037844387,
                     "month_cos": -0.4999999999999998
                 }
             },
             "USD": {
-                "predicted_for_date": "2026-04-11",
-                "predicted_rate": 12203.7053,
+                "predicted_for_date": "2026-04-12",
+                "predicted_rate": 12204.6262,
                 "model": "LinearRegression",
                 "model_path": "/home/user/py_project/financial_agregator/prediction/usd_mode.pkl",
                 "features_used": {
                     "lag1": 12198.28,
                     "lag2": 12198.28,
-                    "day_of_week": 5,
+                    "day_of_week": 6,
                     "month": 4,
-                    "day_of_month": 11
+                    "day_of_month": 12
                 }
             }
         }
-    },
-    "currency_updated_at": "2026-04-10T22:50:31.593541",
-    "gold_updated_at": "2026-04-10T22:50:31.593541"
+    }
 }

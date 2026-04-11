@@ -194,3 +194,12 @@ msgstr "Model forecast"
 
 msgid "Current"
 msgstr "Current"
+
+msgid "Telegram Mini App"
+msgstr "Telegram Mini App"
+
+msgid "Telegram user"
+msgstr "Telegram user"
+
+msgid "Signed in with Telegram"
+msgstr "Signed in with Telegram"

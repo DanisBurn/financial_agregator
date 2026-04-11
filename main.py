@@ -8,6 +8,15 @@ from datetime import datetime, timedelta, timezone
 root_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(root_dir)
 
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
+
+if load_dotenv is not None:
+    load_dotenv(os.path.join(root_dir, ".env"))
+    load_dotenv(os.path.join(project_root, ".env"))
+
 
 def add_local_venv_site_packages():
     venv_lib_dir = os.path.join(project_root, ".venv", "lib")

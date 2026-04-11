@@ -20,6 +20,8 @@
   --sort-bg: #12161f;
   --rate-box-bg: #0b0e14;
   --table-head-bg: #1a1f2e;
+  --tg-safe-top: 0px;
+  --tg-safe-bottom: 0px;
 }
 
 body.light {
@@ -59,6 +61,12 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   transition: background 0.35s, color 0.35s;
+}
+
+body.is-miniapp {
+  min-height: calc(100vh - var(--tg-safe-top));
+  padding-top: var(--tg-safe-top);
+  padding-bottom: var(--tg-safe-bottom);
 }
 
 .bg-blob {
@@ -137,6 +145,83 @@ header {
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
+}
+
+.miniapp-badge {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(74, 158, 255, 0.22);
+  background: rgba(74, 158, 255, 0.08);
+  color: #4a9eff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+}
+
+.miniapp-badge-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(74, 158, 255, 0.18);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.telegram-user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  min-width: 0;
+}
+
+.telegram-user-chip.is-hidden {
+  display: none;
+}
+
+.telegram-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(74, 158, 255, 0.16);
+  color: #4a9eff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.74rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.telegram-user-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.telegram-user-copy strong {
+  font-size: 0.78rem;
+  color: var(--text);
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.telegram-user-copy span {
+  font-size: 0.66rem;
+  color: var(--muted);
+  margin-top: 2px;
 }
 
 .live-badge {
@@ -1252,6 +1337,31 @@ footer strong {
   color: var(--text);
 }
 
+body.is-miniapp .miniapp-badge {
+  display: inline-flex;
+}
+
+body.is-miniapp .wrap {
+  max-width: 100%;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+body.is-miniapp header {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+body.is-miniapp .ticker-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+body.is-miniapp footer {
+  padding-bottom: calc(22px + var(--tg-safe-bottom));
+}
+
 @media (max-width: 1024px) {
   .gold-hero {
     grid-template-columns: 76px 1fr;
@@ -1289,6 +1399,19 @@ footer strong {
 }
 
 @media (max-width: 600px) {
+  .miniapp-badge {
+    order: -2;
+  }
+
+  .telegram-user-chip {
+    width: 100%;
+    order: -1;
+  }
+
+  .telegram-user-copy strong {
+    max-width: none;
+  }
+
   .bank-grid {
     grid-template-columns: 1fr;
   }
@@ -1298,6 +1421,15 @@ footer strong {
   }
 
   .date-time {
+    display: none;
+  }
+
+  body.is-miniapp .controls-group {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  body.is-miniapp .live-badge {
     display: none;
   }
 
